@@ -2,7 +2,7 @@
   "name": "source-insight-context-relation",
   "displayName": "Source Insight Context & Relation",
   "description": "Source Insight 4 style Context and Relation windows for VS Code with call trees, configurable depth, callers/callees, locks, and symbol-only graph nodes.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "publisher": "onepiece-tools",
   "license": "MIT",
   "engines": {
@@ -419,7 +419,7 @@
     "test": "node esbuild.mjs --test && node --test dist-test/core.test.cjs",
     "test:integration": "node esbuild.mjs && node test/integration/runTest.js",
     "test:cpp": "node esbuild.mjs && node test/integration/cppTest.js",
-    "package": "npm run check && npm run test && node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links --out dist-vsix/source-insight-context-relation-2.0.0.vsix",
+    "package": "npm run check && npm run test && node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links --out dist-vsix/source-insight-context-relation-%npm_package_version%.vsix",
     "publish:marketplace": "npm run check && npm run test && vsce publish --allow-missing-repository",
     "vscode:prepublish": "node esbuild.mjs --production"
   },

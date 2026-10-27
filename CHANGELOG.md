@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.1
+
+- Context 定义代码中高亮当前函数名/变量名，定义行和目标符号名同时标记。
+- 移除无效的扩展详情页本地截图提示；VSIX 不再打包截图文件，减小安装包体积。
+- 新增 `Source Insight: 打开使用说明` 命令。
+- 新增 GitHub Actions 构建/Release 工作流。
+
 ## 2.0.0
 
 - 重写 Context / Relation 面板，支持定义、声明、变量类型和多匹配导航。

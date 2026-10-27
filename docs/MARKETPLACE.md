@@ -71,7 +71,7 @@ npm run package
 然后发布：
 
 ```powershell
-npx vsce publish --packagePath "dist-vsix/source-insight-context-relation-2.0.0.vsix" --allow-missing-repository
+npx vsce publish --packagePath "dist-vsix/source-insight-context-relation-2.0.1.vsix" --allow-missing-repository
 ```
 
 也可以使用项目脚本：
