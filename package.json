@@ -1,0 +1,435 @@
+{
+  "name": "source-insight-context-relation",
+  "displayName": "Source Insight Context & Relation",
+  "description": "Source Insight 4 style Context and Relation windows for VS Code with call trees, configurable depth, callers/callees, locks, and symbol-only graph nodes.",
+  "version": "2.0.0",
+  "publisher": "onepiece-tools",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "source insight",
+    "context",
+    "relation",
+    "call tree",
+    "references",
+    "c",
+    "cpp"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "media/icon.png",
+  "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "sourceInsight",
+          "title": "Source Insight",
+          "icon": "media/panel.svg"
+        }
+      ]
+    },
+    "views": {
+      "sourceInsight": [
+        {
+          "type": "webview",
+          "id": "sourceInsight.contextRelation",
+          "name": "Context / Relation",
+          "contextualTitle": "Source Insight"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "sourceInsight.open",
+        "title": "Source Insight: 打开上下文 / 关系窗口",
+        "category": "Source Insight",
+        "icon": "$(layout-panel)"
+      },
+      {
+        "command": "sourceInsight.refresh",
+        "title": "Source Insight: 刷新当前符号",
+        "category": "Source Insight",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "sourceInsight.toggleFollow",
+        "title": "Source Insight: 切换光标跟随",
+        "category": "Source Insight",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "sourceInsight.goToDefinition",
+        "title": "Source Insight: 跳转到当前符号定义",
+        "category": "Source Insight",
+        "icon": "$(go-to-definition)"
+      },
+      {
+        "command": "sourceInsight.clear",
+        "title": "Source Insight: 清空窗口",
+        "category": "Source Insight",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "sourceInsight.focusContext",
+        "title": "Source Insight: 聚焦 Context 窗口",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.focusRelation",
+        "title": "Source Insight: 聚焦 Relation 窗口",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.openSettings",
+        "title": "Source Insight: 打开设置",
+        "category": "Source Insight",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "sourceInsight.toggleContextLock",
+        "title": "Source Insight: 锁定 / 解锁 Context 窗口",
+        "category": "Source Insight",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "sourceInsight.toggleRelationLock",
+        "title": "Source Insight: 锁定 / 解锁 Relation 窗口",
+        "category": "Source Insight",
+        "icon": "$(lock)"
+      },
+      {
+        "command": "sourceInsight.relationCallers",
+        "title": "Source Insight: Relation 显示调用者",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.relationCallees",
+        "title": "Source Insight: Relation 显示被调用",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.relationReferences",
+        "title": "Source Insight: Relation 显示引用",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.relationBoth",
+        "title": "Source Insight: Relation 显示调用者与被调用",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.relationContains",
+        "title": "Source Insight: Relation 显示成员",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.relationType",
+        "title": "Source Insight: Relation 显示变量类型",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.increaseDepth",
+        "title": "Source Insight: 增加关系层级",
+        "category": "Source Insight",
+        "icon": "$(add)"
+      },
+      {
+        "command": "sourceInsight.decreaseDepth",
+        "title": "Source Insight: 减少关系层级",
+        "category": "Source Insight",
+        "icon": "$(remove)"
+      },
+      {
+        "command": "sourceInsight.newRelationWindow",
+        "title": "Source Insight: 新建 Relation 视图",
+        "category": "Source Insight",
+        "icon": "$(add)"
+      },
+      {
+        "command": "sourceInsight.closeRelationWindow",
+        "title": "Source Insight: 关闭当前 Relation 视图",
+        "category": "Source Insight",
+        "icon": "$(close)"
+      },
+      {
+        "command": "sourceInsight.nextRelationView",
+        "title": "Source Insight: 下一个 Relation 视图布局",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.copyRelationTree",
+        "title": "Source Insight: 复制关系树为文本",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.openUserGuide",
+        "title": "Source Insight: 打开使用说明",
+        "category": "Source Insight",
+        "icon": "$(book)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "sourceInsight.open",
+          "group": "navigation@90"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "sourceInsight.open"
+        },
+        {
+          "command": "sourceInsight.refresh",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "sourceInsight.goToDefinition",
+          "when": "editorTextFocus"
+        },
+        {
+          "command": "sourceInsight.clear"
+        },
+        {
+          "command": "sourceInsight.relationCallers"
+        },
+        {
+          "command": "sourceInsight.relationCallees"
+        },
+        {
+          "command": "sourceInsight.relationBoth"
+        },
+        {
+          "command": "sourceInsight.increaseDepth"
+        },
+        {
+          "command": "sourceInsight.decreaseDepth"
+        },
+        {
+          "command": "sourceInsight.toggleContextLock"
+        },
+        {
+          "command": "sourceInsight.toggleRelationLock"
+        },
+        {
+          "command": "sourceInsight.newRelationWindow"
+        },
+        {
+          "command": "sourceInsight.closeRelationWindow"
+        },
+        {
+          "command": "sourceInsight.nextRelationView"
+        },
+        {
+          "command": "sourceInsight.copyRelationTree"
+        },
+        {
+          "command": "sourceInsight.openUserGuide"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "sourceInsight.toggleFollow",
+          "when": "view == sourceInsight.contextRelation",
+          "group": "navigation@1"
+        },
+        {
+          "command": "sourceInsight.refresh",
+          "when": "view == sourceInsight.contextRelation",
+          "group": "navigation@2"
+        },
+        {
+          "command": "sourceInsight.openSettings",
+          "when": "view == sourceInsight.contextRelation",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "sourceInsight.open",
+        "key": "ctrl+alt+i",
+        "mac": "cmd+alt+i",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "sourceInsight.toggleFollow",
+        "key": "ctrl+alt+f",
+        "mac": "cmd+alt+f",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "Source Insight Context & Relation",
+      "properties": {
+        "sourceInsight.followCursor": {
+          "type": "boolean",
+          "default": true,
+          "description": "当 Context / Relation 面板可见时，自动跟随编辑器光标。"
+        },
+        "sourceInsight.trackingMode": {
+          "type": "string",
+          "enum": [
+            "symbol",
+            "enclosing",
+            "off"
+          ],
+          "enumDescriptions": [
+            "跟踪光标下的函数/变量（Source Insight: Track selected symbol）",
+            "跟踪光标所在的函数/类（Source Insight: Track the enclosing function or class）",
+            "关闭自动跟踪"
+          ],
+          "default": "symbol",
+          "description": "自动符号跟踪方式。"
+        },
+        "sourceInsight.autoReveal": {
+          "type": "boolean",
+          "default": false,
+          "description": "光标变化时自动打开底部面板。关闭时只在面板已经可见或手动打开时更新。"
+        },
+        "sourceInsight.contextLines": {
+          "type": "number",
+          "default": 12,
+          "minimum": 2,
+          "maximum": 200,
+          "description": "变量或非函数符号在 Context 窗口中显示的上下文字行数。"
+        },
+        "sourceInsight.contextLineNumbers": {
+          "type": "boolean",
+          "default": true,
+          "description": "在 Context 代码窗口中显示行号。"
+        },
+        "sourceInsight.maxContextLines": {
+          "type": "number",
+          "default": 600,
+          "minimum": 40,
+          "maximum": 3000,
+          "description": "Context 窗口最多渲染的行数；超长函数会在定义附近截断。"
+        },
+        "sourceInsight.maxReferences": {
+          "type": "number",
+          "default": 300,
+          "minimum": 20,
+          "maximum": 2000,
+          "description": "每个符号最多查询的引用/调用点数量。"
+        },
+        "sourceInsight.maxRelationNodes": {
+          "type": "number",
+          "default": 500,
+          "minimum": 50,
+          "maximum": 5000,
+          "description": "Relation 树最多节点数，避免深层调用图导致卡顿。"
+        },
+        "sourceInsight.defaultDepth": {
+          "type": "number",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 6,
+          "description": "新建 Relation 视图时自动展开的调用层级。"
+        },
+        "sourceInsight.excludeMacros": {
+          "type": "boolean",
+          "default": false,
+          "description": "调用图中排除 C 函数式宏（对应 Source Insight: Exclude C Macros）。"
+        },
+        "sourceInsight.excludedSymbols": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "调用图中不展开的函数/符号名列表（对应 Source Insight Call Graph Filter）。"
+        },
+        "sourceInsight.expandDuplicateBranches": {
+          "type": "boolean",
+          "default": false,
+          "description": "重复出现的分支也自动展开；关闭时重复分支保持折叠。"
+        },
+        "sourceInsight.showLocations": {
+          "type": "boolean",
+          "default": false,
+          "description": "在关系节点中显示文件名/行号列。默认关闭，只显示函数或变量名称。"
+        },
+        "sourceInsight.relationLineStyle": {
+          "type": "string",
+          "enum": [
+            "elbow",
+            "curve",
+            "direct"
+          ],
+          "enumDescriptions": [
+            "直角折线（Source Insight orthogonal）",
+            "平滑曲线（Source Insight spline）",
+            "直线（Source Insight direct）"
+          ],
+          "default": "elbow",
+          "description": "Relation 图形连接线样式。"
+        },
+        "sourceInsight.relationSpacing": {
+          "type": "number",
+          "default": 40,
+          "minimum": 18,
+          "maximum": 120,
+          "description": "Relation 树节点列间距。"
+        },
+        "sourceInsight.relationArrows": {
+          "type": "boolean",
+          "default": true,
+          "description": "在关系连线末端显示方向箭头。"
+        },
+        "sourceInsight.relationNodeShadow": {
+          "type": "boolean",
+          "default": true,
+          "description": "关系节点使用阴影（Source Insight shaded nodes）。"
+        },
+        "sourceInsight.debounceMs": {
+          "type": "number",
+          "default": 280,
+          "minimum": 80,
+          "maximum": 2000,
+          "description": "光标移动后刷新 Context / Relation 的防抖延迟（毫秒）。"
+        },
+        "sourceInsight.providerTimeoutMs": {
+          "type": "number",
+          "default": 15000,
+          "minimum": 3000,
+          "maximum": 120000,
+          "description": "等待语言服务器返回定义/引用的超时时间（毫秒）。"
+        },
+        "sourceInsight.sortReferencesByFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "调用点按文件路径、行号从上到下排序；关闭时保留语言服务器返回顺序。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "check": "tsc --noEmit",
+    "test": "node esbuild.mjs --test && node --test dist-test/core.test.cjs",
+    "test:integration": "node esbuild.mjs && node test/integration/runTest.js",
+    "test:cpp": "node esbuild.mjs && node test/integration/cppTest.js",
+    "package": "npm run check && npm run test && node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links --out dist-vsix/source-insight-context-relation-2.0.0.vsix",
+    "publish:marketplace": "npm run check && npm run test && vsce publish --allow-missing-repository",
+    "vscode:prepublish": "node esbuild.mjs --production"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^5.9.0",
+    "ws": "^8.22.0"
+  }
+}

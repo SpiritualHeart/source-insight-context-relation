@@ -1,0 +1,15 @@
+.vscode/**
+.vscode-test/**
+.preview/**
+src/**
+test/**
+node_modules/**
+dist-test/**
+dist-vsix/**
+media/preview.png
+*.map
+tsconfig.json
+esbuild.mjs
+.gitignore
+package-lock.json
+**/.DS_Store
