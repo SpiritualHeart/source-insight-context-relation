@@ -470,7 +470,7 @@ export class SymbolService {
             });
           }
           const records = await this.getDocumentSymbols(document, isStale);
-          const callerRecord = findEnclosingFunction(
+          const callerRecord = findEnclosingReferenceOwner(
             records,
             new vscode.Position(location.startLine, location.startCharacter),
           );
@@ -1325,14 +1325,25 @@ function findEnclosingSymbol(
   return matches[0];
 }
 
-function findEnclosingFunction(
+function findEnclosingReferenceOwner(
   symbols: SymbolRecord[],
   position: vscode.Position,
 ): SymbolRecord | undefined {
+  // References inside a function are still grouped by that function. At file
+  // scope (for example `static UINT8 x = SOME_MACRO;`) there is no function;
+  // use the enclosing global variable/type instead of collapsing every macro
+  // use into a single anonymous "global" node.
+  const enclosing = findEnclosingSymbol(symbols, position);
+  if (enclosing) {
+    return enclosing;
+  }
   const matches: SymbolRecord[] = [];
   const visit = (records: SymbolRecord[]): void => {
     for (const record of records) {
-      if (FUNCTION_KINDS.has(record.kind) && record.range.contains(position)) {
+      if (
+        (VARIABLE_KINDS.has(record.kind) || CONTAINER_KINDS.has(record.kind)) &&
+        record.range.contains(position)
+      ) {
         matches.push(record);
       }
       visit(record.children);

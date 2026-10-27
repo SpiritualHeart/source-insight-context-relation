@@ -381,7 +381,9 @@ export class RelationBuilder {
       const id = `${prefix}${index}`;
       index += 1;
       const caller = group.caller;
-      const openLocation = caller?.definition ?? group.references[0].location;
+      const openLocation = mode === 'references'
+        ? group.references[0].location
+        : caller?.definition ?? group.references[0].location;
       const node = this.createNode(
         id,
         caller ? (group.calls > 0 ? 'caller' : 'reference') : 'global',
@@ -399,8 +401,11 @@ export class RelationBuilder {
       if (caller) {
         const cycle = ancestors.has(caller.key);
         node.cycle = cycle;
-        node.expandable = !cycle;
-        if (!cycle && levels > 1) {
+        // A macro reference is grouped by its owner (function/global
+        // variable), but expanding that owner's callers would be misleading;
+        // double-clicking the group already opens the macro use itself.
+        node.expandable = !cycle && !(symbol.isMacro && mode === 'references');
+        if (node.expandable && !cycle && levels > 1) {
           const duplicated = !state.options.expandDuplicateBranches &&
             state.expandedSymbols.has(caller.key);
           if (!duplicated) {

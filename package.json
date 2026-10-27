@@ -2,7 +2,7 @@
   "name": "source-insight-context-relation",
   "displayName": "Source Insight Context & Relation",
   "description": "Source Insight 4 style Context and Relation windows for VS Code with call trees, configurable depth, callers/callees, locks, and symbol-only graph nodes.",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "publisher": "onepiece-tools",
   "license": "MIT",
   "engines": {

@@ -1,7 +1,7 @@
 # Source Insight Context & Relation 使用说明
 
 > 面向第一次使用本插件的人：从安装、打开面板，到查调用者、调层级、右键看关系，一步步上手。  
-> 插件版本：**2.0.2**　适用：VS Code 1.90 及以上
+> 插件版本：**2.0.3**　适用：VS Code 1.90 及以上
 
 ![界面总览](https://raw.githubusercontent.com/SpiritualHeart/source-insight-context-relation/main/media/preview.png)
 
@@ -115,7 +115,7 @@ C/C++ 工程如果提示找不到头文件，需要配置：
 5. 选择文件：
 
    ```text
-   dist-vsix/source-insight-context-relation-2.0.2.vsix
+   dist-vsix/source-insight-context-relation-2.0.3.vsix
    ```
 
 6. 安装完成后点击 **Reload**（重新加载）。
@@ -123,7 +123,7 @@ C/C++ 工程如果提示找不到头文件，需要配置：
 ### 方法二：命令行安装
 
 ```powershell
-code --install-extension "D:\Desktop\ONE_PIECE\VSCODE插件\relation插件\dist-vsix\source-insight-context-relation-2.0.2.vsix"
+code --install-extension "D:\Desktop\ONE_PIECE\VSCODE插件\relation插件\dist-vsix\source-insight-context-relation-2.0.3.vsix"
 ```
 
 安装后重新加载 VS Code。
@@ -133,7 +133,7 @@ code --install-extension "D:\Desktop\ONE_PIECE\VSCODE插件\relation插件\dist-
 打开扩展面板，搜索 `Source Insight`，应能看到：
 
 ```text
-Source Insight Context & Relation  v2.0.2
+Source Insight Context & Relation  v2.0.3
 ```
 
 ---
@@ -770,6 +770,6 @@ A：可以用 **Source Insight: 复制关系树为文本** 复制成缩进文本
 - [项目说明 README](../README.md)
 - [Source Insight 4 功能对齐清单](SI4_FEATURE_MATRIX.md)
 
-安装包文件名：`source-insight-context-relation-2.0.2.vsix`（由发布者提供）。
+安装包文件名：`source-insight-context-relation-2.0.3.vsix`（由发布者提供）。
 
 如果遇到语言服务相关的问题，先看 VS Code 输出面板中的 **Source Insight** 和 **C/C++** 两个通道。

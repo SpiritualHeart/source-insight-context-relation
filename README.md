@@ -20,6 +20,7 @@
   - 支持 **调用者 / 被调用 / 双向 / 引用 / 成员 / 类型 / 派生** 七种关系。
   - **1–6 层**自动展开，工具栏 `− / +` 调整；任意节点可单独展开或按 1/2/3 层展开。
   - 声明节点固定在函数关系的第一位；读取/写入、调用次数、循环引用均有标记。
+  - 宏引用按“包含该使用位置的函数/全局变量”分组，双击节点跳到实际宏使用位置。
   - 单击节点在 Context 中预览，双击打开源码，右键打开关系菜单。
   - 横向图、纵向图、轮廓列表三种布局；折线/曲线/直线、箭头、间距、阴影可配置。
   - 多个 Relation 视图标签页，每个标签独立保存关系类型、层级和树。
@@ -30,7 +31,7 @@
 ## 安装
 
 ```powershell
-code --install-extension source-insight-context-relation-2.0.2.vsix
+code --install-extension source-insight-context-relation-2.0.3.vsix
 ```
 
 安装后重新加载 VS Code：
@@ -127,7 +128,7 @@ npm run test:cpp           # 本机 ms-vscode.cpptools 真实 C 工程 + 截图
 npm run package
 ```
 
-产物：`dist-vsix/source-insight-context-relation-2.0.2.vsix`。
+产物：`dist-vsix/source-insight-context-relation-2.0.3.vsix`。
 
 ## License
 
