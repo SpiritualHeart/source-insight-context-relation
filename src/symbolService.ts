@@ -19,6 +19,7 @@ import type {
   TrackingMode,
 } from './protocol';
 import type {
+  ContextFocus,
   HostContext,
   HostReference,
   HostSymbol,
@@ -721,34 +722,39 @@ export class SymbolService {
     matches: ContextMatchView[],
     activeMatch: number,
     isStale: () => boolean,
+    focus?: ContextFocus,
   ): Promise<HostContext> {
     const typeSymbol = symbol.isVariable ? await this.getType(symbol, isStale) : undefined;
     let displaySymbol = symbol;
-    let location = symbol.definition;
-    if (view === 'declaration' && symbol.declaration) {
+    let location = focus?.location ?? symbol.definition;
+    if (!focus && view === 'declaration' && symbol.declaration) {
       location = symbol.declaration;
-    } else if (view === 'type' && typeSymbol) {
+    } else if (!focus && view === 'type' && typeSymbol) {
       displaySymbol = typeSymbol;
       location = typeSymbol.definition;
     }
 
     const document = await this.getDocument(vscode.Uri.parse(location.uri), isStale);
-    const aligned = alignLocationToWord(document, location, displaySymbol.name);
+    const targetLocation = focus?.targetLocation ?? location;
+    const targetName = focus?.targetName ?? displaySymbol.name;
+    const aligned = alignLocationToWord(document, targetLocation, targetName);
     const records = await this.getDocumentSymbols(document, isStale);
     const position = new vscode.Position(aligned.startLine, aligned.startCharacter);
-    const record = findSymbolAt(records, position, displaySymbol.name)
-      ?? findContainerAt(records, position);
+    const record = focus
+      ? undefined
+      : findSymbolAt(records, position, displaySymbol.name)
+        ?? findContainerAt(records, position);
     const config = this.getConfig();
     const range = computeContextRange({
       totalLines: document.lineCount,
       targetStartLine: aligned.startLine,
       targetEndLine: aligned.endLine,
       symbolStartLine:
-        (displaySymbol.isFunction || displaySymbol.isContainer) && record
+        !focus && (displaySymbol.isFunction || displaySymbol.isContainer) && record
           ? record.range.start.line
           : undefined,
       symbolEndLine:
-        (displaySymbol.isFunction || displaySymbol.isContainer) && record
+        !focus && (displaySymbol.isFunction || displaySymbol.isContainer) && record
           ? record.range.end.line
           : undefined,
       contextLines: config.contextLines,
@@ -774,7 +780,8 @@ export class SymbolService {
 
     return {
       symbol,
-      targetName: displaySymbol.name,
+      targetName,
+      focusLocation: focus?.location,
       matches,
       activeMatch,
       activeView: availableViews.includes(view) ? view : 'definition',

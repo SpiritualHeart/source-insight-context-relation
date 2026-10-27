@@ -609,13 +609,17 @@
       ? `<button class="outline-chevron${collapsed ? ' is-collapsed' : ''}" data-chevron-id="${escapeAttr(node.id)}" type="button" title="${collapsed ? '展开' : '收起'}">${collapsed ? '▸' : '▾'}</button>`
       : '<span class="outline-chevron-placeholder"></span>';
     const badges = nodeBadges(node);
+    const sites = renderNodeSites(node);
     return (
       `<div class="outline-row ${extraClass}${collapsed ? ' is-collapsed' : ''}" style="--outline-depth:${depth}" data-wrap-id="${escapeAttr(node.id)}" data-node-id="${escapeAttr(node.id)}" tabindex="0">` +
         `<span class="outline-indent"></span>${chevron}` +
         `<span class="outline-glyph">${nodeGlyph(node)}</span>` +
         `<span class="outline-name">${escapeHtml(node.name)}</span>` +
         badges +
-      '</div>'
+      '</div>' +
+      (sites
+        ? `<div class="outline-sites" style="--outline-depth:${depth}">${sites}</div>`
+        : '')
     );
   }
 
@@ -663,12 +667,32 @@
           `<span class="node-main">` +
             `<span class="node-name">${escapeHtml(node.name)}</span>` +
             (node.locationLabel ? `<span class="node-location">${escapeHtml(node.locationLabel)}</span>` : '') +
+            renderNodeSites(node) +
           '</span>' +
           nodeBadges(node, true) +
         '</div>' +
         children +
       '</div>'
     );
+  }
+
+  function renderNodeSites(node) {
+    if (!Array.isArray(node.sites) || node.sites.length === 0) {
+      return '';
+    }
+    const rows = node.sites.map((site, index) => {
+      const role = site.role === 'call'
+        ? '调用'
+        : site.role === 'read'
+          ? '读'
+          : site.role === 'write'
+            ? '写'
+            : '引用';
+      return `<button class="node-site role-${escapeAttr(site.role)}" type="button" data-site-node-id="${escapeAttr(node.id)}" data-site-index="${index}" title="在 Context 中查看第 ${site.line} 行">` +
+        `<span class="node-site-label">Line</span><span class="node-site-line">${site.line}</span><span class="node-site-role">${role}</span>` +
+        '</button>';
+    });
+    return `<span class="node-sites">${rows.join('')}</span>`;
   }
 
   function nodeGlyph(node) {
@@ -1311,6 +1335,26 @@
   });
 
   els.tree.addEventListener('click', (event) => {
+    const site = event.target.closest('[data-site-node-id]');
+    if (site) {
+      event.preventDefault();
+      event.stopPropagation();
+      const nodeId = site.dataset.siteNodeId || '';
+      const card = site.closest('[data-node-id]');
+      if (card) {
+        selectedNodeId = nodeId;
+        for (const selected of els.tree.querySelectorAll('.is-selected')) {
+          selected.classList.remove('is-selected');
+        }
+        card.classList.add('is-selected');
+      }
+      post({
+        type: 'previewNode',
+        nodeId,
+        siteIndex: Number(site.dataset.siteIndex || '0'),
+      });
+      return;
+    }
     const chevron = event.target.closest('[data-chevron-id]');
     if (chevron) {
       event.preventDefault();
@@ -1353,6 +1397,17 @@
   });
 
   els.tree.addEventListener('dblclick', (event) => {
+    const site = event.target.closest('[data-site-node-id]');
+    if (site) {
+      event.preventDefault();
+      event.stopPropagation();
+      post({
+        type: 'openNode',
+        nodeId: site.dataset.siteNodeId || '',
+        siteIndex: Number(site.dataset.siteIndex || '0'),
+      });
+      return;
+    }
     const card = event.target.closest('[data-node-id]');
     if (!card) {
       return;

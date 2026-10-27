@@ -38,6 +38,11 @@ export interface HostReference {
   callerName: string;
 }
 
+export interface HostNodeSite {
+  location: SourceLocation;
+  role: Exclude<HostReferenceRole, 'declaration'>;
+}
+
 export interface HostNode {
   id: string;
   role: RelationRole;
@@ -48,6 +53,8 @@ export interface HostNode {
   count: number;
   readCount: number;
   writeCount: number;
+  /** Distinct use/call sites grouped into this node, sorted by line. */
+  sites: HostNodeSite[];
   children: HostNode[];
   expandable: boolean;
   cycle: boolean;
@@ -70,9 +77,20 @@ export interface HostRelationTree {
   totalNodes: number;
 }
 
+export interface ContextFocus {
+  /** Document location used to center the context window. */
+  location: SourceLocation;
+  /** Symbol highlighted at that location (the relation root). */
+  targetName: string;
+  /** Exact word range of the highlighted symbol; defaults to location. */
+  targetLocation?: SourceLocation;
+}
+
 export interface HostContext {
   symbol: HostSymbol;
   targetName: string;
+  /** Set when the context was opened from a relation use/call site. */
+  focusLocation?: SourceLocation;
   matches: ContextMatchView[];
   activeMatch: number;
   activeView: ContextViewKind;

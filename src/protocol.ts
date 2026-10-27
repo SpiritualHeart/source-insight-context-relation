@@ -91,6 +91,14 @@ export type RelationRole =
   | 'derived'
   | 'global';
 
+export type ReferenceSiteRole = 'call' | 'read' | 'write' | 'reference';
+
+export interface RelationNodeSiteView {
+  /** One-based line number at the use/call site. */
+  line: number;
+  role: ReferenceSiteRole;
+}
+
 export interface RelationNodeView {
   id: string;
   name: string;
@@ -100,6 +108,8 @@ export interface RelationNodeView {
   count?: number;
   readCount?: number;
   writeCount?: number;
+  /** Distinct use/call sites within this grouped node. */
+  sites?: RelationNodeSiteView[];
   /** True when the node can be expanded, either immediately or by loading more. */
   expandable: boolean;
   isFunction?: boolean;
@@ -179,6 +189,8 @@ export type NodeAction =
 export interface OpenNodeMessage {
   type: 'openNode';
   nodeId: string;
+  /** Zero-based index into RelationNodeView.sites. */
+  siteIndex?: number;
 }
 
 export interface PreviewNodeMessage {
@@ -186,6 +198,8 @@ export interface PreviewNodeMessage {
   nodeId: string;
   /** Preview the declaration/type view instead of the definition. */
   view?: ContextViewKind;
+  /** Zero-based index into RelationNodeView.sites. */
+  siteIndex?: number;
 }
 
 export interface NodeActionMessage {

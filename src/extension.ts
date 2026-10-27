@@ -99,6 +99,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
   if (process.env.SOURCE_INSIGHT_TEST === '1') {
     register('sourceInsight.__getState', () => controller.getStateForTests());
+    register(
+      'sourceInsight.__previewNode',
+      (nodeId: unknown, siteIndex: unknown) => controller.previewNodeForTests(
+        String(nodeId),
+        typeof siteIndex === 'number' ? siteIndex : undefined,
+      ),
+    );
   }
 }
 

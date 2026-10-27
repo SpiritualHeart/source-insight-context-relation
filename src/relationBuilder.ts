@@ -7,6 +7,7 @@ import type {
 import type {
   BuildTreeOptions,
   HostNode,
+  HostNodeSite,
   HostReference,
   HostRelationTree,
   HostSymbol,
@@ -381,9 +382,9 @@ export class RelationBuilder {
       const id = `${prefix}${index}`;
       index += 1;
       const caller = group.caller;
-      const openLocation = mode === 'references'
-        ? group.references[0].location
-        : caller?.definition ?? group.references[0].location;
+      const openLocation = group.sites[0]?.location
+        ?? caller?.definition
+        ?? group.references[0].location;
       const node = this.createNode(
         id,
         caller ? (group.calls > 0 ? 'caller' : 'reference') : 'global',
@@ -398,6 +399,7 @@ export class RelationBuilder {
       );
       node.readCount = group.reads;
       node.writeCount = group.writes;
+      node.sites = group.sites;
       if (caller) {
         const cycle = ancestors.has(caller.key);
         node.cycle = cycle;
@@ -660,6 +662,7 @@ export class RelationBuilder {
       count,
       readCount: 0,
       writeCount: 0,
+      sites: [],
       children: [],
       expandable: false,
       cycle: false,
@@ -678,6 +681,7 @@ export class RelationBuilder {
 interface ReferenceGroup {
   caller?: HostSymbol;
   references: HostReference[];
+  sites: HostNodeSite[];
   calls: number;
   reads: number;
   writes: number;
@@ -686,12 +690,18 @@ interface ReferenceGroup {
 function groupReferences(references: HostReference[]): ReferenceGroup[] {
   const groups = new Map<string, ReferenceGroup>();
   for (const reference of references) {
-    const key = reference.caller?.key ?? 'global';
+    // Header declarations and source definitions can be different DocumentSymbol
+    // records with the same function name. Group by logical symbol name/kind so
+    // repeated use inside one function becomes one node with multiple line sites.
+    const key = reference.caller
+      ? `${reference.caller.isFunction ? 'function' : 'symbol'}:${reference.caller.name}`
+      : 'global';
     let group = groups.get(key);
     if (!group) {
       group = {
         caller: reference.caller,
         references: [],
+        sites: [],
         calls: 0,
         reads: 0,
         writes: 0,
@@ -699,6 +709,12 @@ function groupReferences(references: HostReference[]): ReferenceGroup[] {
       groups.set(key, group);
     }
     group.references.push(reference);
+    group.sites.push({
+      location: reference.location,
+      role: reference.role === 'declaration'
+        ? 'reference'
+        : reference.role,
+    });
     if (reference.role === 'call') {
       group.calls += 1;
     } else if (reference.role === 'read') {
@@ -706,6 +722,17 @@ function groupReferences(references: HostReference[]): ReferenceGroup[] {
     } else if (reference.role === 'write') {
       group.writes += 1;
     }
+  }
+  for (const group of groups.values()) {
+    group.sites.sort((a, b) => {
+      if (a.location.uri !== b.location.uri) {
+        return a.location.uri.localeCompare(b.location.uri);
+      }
+      if (a.location.startLine !== b.location.startLine) {
+        return a.location.startLine - b.location.startLine;
+      }
+      return a.location.startCharacter - b.location.startCharacter;
+    });
   }
   return [...groups.values()].sort((a, b) => {
     const nameA = a.caller?.name ?? '全局';

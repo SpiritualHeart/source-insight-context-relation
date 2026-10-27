@@ -14,6 +14,7 @@ import type {
   WebviewMessage,
 } from './protocol';
 import type {
+  ContextFocus,
   ContextHistoryEntry,
   HostContext,
   HostNode,
@@ -47,6 +48,7 @@ interface ContextPaneState {
   matches: ContextMatchView[];
   matchSymbols: HostSymbol[];
   activeMatch: number;
+  focus?: ContextFocus;
 }
 
 interface RelationTabState {
@@ -503,6 +505,10 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
     this.postState();
   }
 
+  async previewNodeForTests(nodeId: string, siteIndex?: number): Promise<void> {
+    await this.previewNode(nodeId, undefined, siteIndex);
+  }
+
   getStateForTests(): {
     state: PanelState;
     hasSnapshot: boolean;
@@ -735,6 +741,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
     matchSymbols: HostSymbol[],
     activeMatch: number,
     pushHistory = true,
+    focus?: ContextFocus,
   ): Promise<void> {
     const revision = ++this.analysisRevision;
     const stale = () => revision !== this.analysisRevision;
@@ -754,6 +761,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
         matches,
         activeMatch,
         stale,
+        focus,
       );
       if (stale()) {
         return;
@@ -765,6 +773,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
         matches,
         matchSymbols,
         activeMatch,
+        focus,
       };
       if (pushHistory) {
         this.pushContextHistory(symbol, context.activeView);
@@ -848,10 +857,10 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
         this.flushPendingFocus();
         break;
       case 'openNode':
-        await this.openNode(message.nodeId);
+        await this.openNode(message.nodeId, message.siteIndex);
         break;
       case 'previewNode':
-        await this.previewNode(message.nodeId, message.view);
+        await this.previewNode(message.nodeId, message.view, message.siteIndex);
         break;
       case 'nodeAction':
         await this.onNodeAction(message.nodeId, message.action, message.levels);
@@ -915,20 +924,47 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
     }
   }
 
-  private async openNode(nodeId: string): Promise<void> {
+  private async openNode(nodeId: string, siteIndex?: number): Promise<void> {
     const node = this.relationTree?.nodeMap.get(nodeId);
     if (!node) {
       return;
     }
-    await this.openLocation(node.openLocation);
+    const site = node.sites[siteIndex ?? 0] ?? node.sites[0];
+    await this.openLocation(site?.location ?? node.openLocation);
   }
 
-  private async previewNode(nodeId: string, view?: ContextViewKind): Promise<void> {
+  private async previewNode(
+    nodeId: string,
+    view?: ContextViewKind,
+    siteIndex?: number,
+  ): Promise<void> {
     if (this.contextLocked) {
       return;
     }
     const node = this.relationTree?.nodeMap.get(nodeId);
-    if (!node || !node.symbol) {
+    if (!node) {
+      return;
+    }
+    const root = this.relationTree?.root.symbol;
+    const site = node.sites[siteIndex ?? 0] ?? node.sites[0];
+    if (site && root) {
+      const owner = node.symbol ?? root;
+      await this.rebuildContext(
+        owner,
+        'definition',
+        [{ index: 0, label: owner.name, kindLabel: owner.kindLabel, detail: owner.detail }],
+        [owner],
+        0,
+        true,
+        {
+          location: site.location,
+          targetName: root.name,
+          targetLocation: site.location,
+        },
+      );
+      return;
+    }
+    if (!node.symbol) {
       return;
     }
     const symbol = node.symbol;
@@ -1098,10 +1134,10 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
       return;
     }
     const state = this.contextState;
-    let location = state.symbol.definition;
-    if (state.view === 'declaration' && state.symbol.declaration) {
+    let location = state.context.focusLocation ?? state.symbol.definition;
+    if (!state.context.focusLocation && state.view === 'declaration' && state.symbol.declaration) {
       location = state.symbol.declaration;
-    } else if (state.view === 'type' && state.context.typeSymbol) {
+    } else if (!state.context.focusLocation && state.view === 'type' && state.context.typeSymbol) {
       location = state.context.typeSymbol.definition;
     }
     if (line !== undefined) {
@@ -1363,6 +1399,12 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
       count: node.count > 1 ? node.count : undefined,
       readCount: node.readCount || undefined,
       writeCount: node.writeCount || undefined,
+      sites: node.sites.length > 0
+        ? node.sites.map((site) => ({
+            line: site.location.startLine + 1,
+            role: site.role,
+          }))
+        : undefined,
       expandable: node.expandable || node.children.length > 0,
       isFunction: node.symbol?.isFunction,
       isContainer: node.symbol?.isContainer,

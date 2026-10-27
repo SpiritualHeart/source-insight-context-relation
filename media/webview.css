@@ -1120,6 +1120,66 @@ body.is-resizing {
   text-overflow: ellipsis;
 }
 
+.node-sites {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 78px;
+  margin-top: 2px;
+  overflow: auto;
+}
+
+.node-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 15px;
+  width: 100%;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 2px;
+  color: var(--si-link);
+  background: transparent;
+  font-family: var(--si-font-code);
+  font-size: 9px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.node-site:hover {
+  color: var(--si-fg);
+  background: color-mix(in srgb, var(--si-accent) 16%, transparent);
+}
+
+.node-site:focus-visible {
+  outline: 1px solid var(--si-accent);
+  outline-offset: -1px;
+}
+
+.node-site-line {
+  color: var(--si-fg);
+  font-weight: 600;
+}
+
+.node-site-label,
+.node-site-role {
+  color: var(--si-muted);
+  font-size: 8px;
+}
+
+.node-site-role {
+  margin-left: auto;
+}
+
+.outline-sites {
+  padding-left: calc(18px + var(--outline-depth, 0) * 14px);
+  margin: -1px 0 3px;
+}
+
+.outline-sites .node-sites {
+  max-height: 58px;
+}
+
 .node-badges {
   display: inline-flex;
   flex: 0 0 auto;
