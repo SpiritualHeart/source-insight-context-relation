@@ -114,6 +114,12 @@ function registerTestLanguageFeatures() {
           if (!range || document.getText(range) !== NAME) {
             return undefined;
           }
+          // Simulate cpptools occasionally answering a definition-site query
+          // with the matching header prototype. The extension must still use
+          // the current source definition.
+          if (document.uri.toString() === sourceUri.toString() && position.line === 4) {
+            return new vscode.Location(headerUri, new vscode.Range(3, 5, 3, 29));
+          }
           return new vscode.Location(sourceUri, new vscode.Range(4, 5, 4, 29));
         },
       },
@@ -289,6 +295,33 @@ async function run() {
     await vscode.commands.executeCommand('sourceInsight.increaseDepth');
     const deeper = await vscode.commands.executeCommand('sourceInsight.__getState');
     assert.equal(deeper.state.relation.depth, 2, 'Depth command should increase relation depth');
+
+    const sourceDocument = await vscode.workspace.openTextDocument(sourceUri);
+    const sourceEditor = await vscode.window.showTextDocument(sourceDocument, {
+      preview: false,
+      preserveFocus: false,
+    });
+    const sourcePosition = new vscode.Position(4, 7);
+    sourceEditor.selection = new vscode.Selection(sourcePosition, sourcePosition);
+    sourceEditor.revealRange(new vscode.Range(sourcePosition, sourcePosition));
+    await vscode.commands.executeCommand('sourceInsight.open');
+    const definitionSiteState = await waitFor(
+      async () => {
+        const current = await vscode.commands.executeCommand('sourceInsight.__getState');
+        return current?.state?.status === 'ready'
+          && current.state.context?.symbolName === NAME
+          && current.debug?.definition?.uri === sourceUri.toString()
+          ? current
+          : undefined;
+      },
+      12000,
+      'source definition-site context',
+    );
+    assert.equal(
+      definitionSiteState.state.context.targetStartLine,
+      4,
+      'Clicking the source definition must show the source definition, not the header prototype',
+    );
 
     await vscode.commands.executeCommand('sourceInsight.clear');
     const cleared = await vscode.commands.executeCommand('sourceInsight.__getState');

@@ -211,6 +211,23 @@ export class SymbolService {
       }
     }
 
+    const localDefinition = await this.localDefinitionAt(
+      document,
+      cursor.word,
+      cursor.range.start,
+      isStale,
+    );
+    if (localDefinition) {
+      await this.decorateDeclaration(localDefinition, isStale);
+      return {
+        symbol: localDefinition,
+        matches: [this.matchView(localDefinition, 0)],
+        matchSymbols: [localDefinition],
+        word: cursor.word,
+        unresolved: false,
+      };
+    }
+
     assertActive(isStale);
     const candidates = await this.resolveDefinitionCandidates(
       document.uri,
@@ -228,7 +245,6 @@ export class SymbolService {
       languageId: document.languageId,
       currentUri: document.uri.toString(),
     });
-
     const matchSymbols: HostSymbol[] = [];
     for (const candidate of candidates.slice(0, 10)) {
       assertActive(isStale);
@@ -271,6 +287,42 @@ export class SymbolService {
       word: cursor.word,
       unresolved: !chosen,
     };
+  }
+
+  private async localDefinitionAt(
+    document: vscode.TextDocument,
+    name: string,
+    position: vscode.Position,
+    isStale: () => boolean,
+  ): Promise<HostSymbol | undefined> {
+    // cpptools can transiently answer a Go To Definition on a function
+    // definition with the matching header prototype. The file being edited is
+    // the authoritative definition when the cursor is already on a function
+    // body, a source-level variable definition, or a type definition.
+    if (isHeaderFile(document.uri.toString())) {
+      return undefined;
+    }
+    const records = await this.getDocumentSymbols(document, isStale);
+    const record = findSymbolAt(records, position, name);
+    if (
+      !record ||
+      !record.selectionRange.contains(position)
+    ) {
+      return undefined;
+    }
+    const lineText = safeLineText(document, position.line);
+    if (FUNCTION_KINDS.has(record.kind)) {
+      if (!isFunctionDefinitionRecord(document, record)) {
+        return undefined;
+      }
+    } else if (VARIABLE_KINDS.has(record.kind)) {
+      if (/\bextern\b/.test(lineText)) {
+        return undefined;
+      }
+    } else if (!CONTAINER_KINDS.has(record.kind)) {
+      return undefined;
+    }
+    return this.symbolFromRecord(document, record);
   }
 
   async symbolFromEditorSelection(
@@ -1122,6 +1174,21 @@ export function cleanSymbolName(rawName: string): string {
   }
   const paren = name.indexOf('(');
   return paren > 0 ? name.slice(0, paren).trim() : name;
+}
+
+function isFunctionDefinitionRecord(
+  document: vscode.TextDocument,
+  record: SymbolRecord,
+): boolean {
+  const start = record.selectionRange.end;
+  const startOffset = document.offsetAt(start);
+  const endOffset = Math.min(document.getText().length, startOffset + 500);
+  const tail = document.getText(
+    new vscode.Range(start, document.positionAt(endOffset)),
+  );
+  const brace = tail.indexOf('{');
+  const semicolon = tail.indexOf(';');
+  return brace >= 0 && (semicolon < 0 || brace < semicolon);
 }
 
 function isAnonymousSymbolName(name: string): boolean {
