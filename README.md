@@ -30,7 +30,7 @@
 ## 安装
 
 ```powershell
-code --install-extension source-insight-context-relation-2.0.1.vsix
+code --install-extension source-insight-context-relation-2.0.2.vsix
 ```
 
 安装后重新加载 VS Code：
@@ -127,7 +127,7 @@ npm run test:cpp           # 本机 ms-vscode.cpptools 真实 C 工程 + 截图
 npm run package
 ```
 
-产物：`dist-vsix/source-insight-context-relation-2.0.1.vsix`。
+产物：`dist-vsix/source-insight-context-relation-2.0.2.vsix`。
 
 ## License
 
