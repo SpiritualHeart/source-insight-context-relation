@@ -2,6 +2,8 @@
 
 > 把 Source Insight 4 的 **Context Window** 和 **Relation Window** 搬到 VS Code 底部面板：定义/声明/类型、可调层级的调用树、调用者/被调用/双向/引用/成员/类型关系，以及右键关系菜单。
 
+![Source Insight Context & Relation](https://raw.githubusercontent.com/SpiritualHeart/source-insight-context-relation/main/media/preview.png)
+
 > **第一次使用？** 按 `Ctrl+Shift+P` 运行 **Source Insight: 打开使用说明**，按“安装 → 打开面板 → 查调用者”的顺序操作。
 
 ## 主要功能

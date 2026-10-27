@@ -3,6 +3,8 @@
 > 面向第一次使用本插件的人：从安装、打开面板，到查调用者、调层级、右键看关系，一步步上手。  
 > 插件版本：**2.0.1**　适用：VS Code 1.90 及以上
 
+![界面总览](https://raw.githubusercontent.com/SpiritualHeart/source-insight-context-relation/main/media/preview.png)
+
 界面布局：左侧是 **Context**（当前符号的定义代码），右侧是 **Relation**（以当前函数为根的调用者关系图）。
 
 ## 30 秒上手

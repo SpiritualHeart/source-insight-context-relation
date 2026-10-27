@@ -26,6 +26,14 @@
   ],
   "main": "./dist/extension.js",
   "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SpiritualHeart/source-insight-context-relation.git"
+  },
+  "homepage": "https://github.com/SpiritualHeart/source-insight-context-relation#readme",
+  "bugs": {
+    "url": "https://github.com/SpiritualHeart/source-insight-context-relation/issues"
+  },
   "contributes": {
     "viewsContainers": {
       "panel": [
