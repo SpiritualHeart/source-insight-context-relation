@@ -15,6 +15,12 @@ import {
   normalizeDisplayPath,
 } from '../src/core';
 
+import {
+  buildSearchRegExp,
+  classifyVariableUse,
+  parseSourceFile,
+} from '../src/cParser';
+
 import type { SourceLocation } from '../src/protocol';
 
 function location(
@@ -292,6 +298,185 @@ test('every id requested by the webview is present in the rendered HTML', () => 
   );
   const missing = [...scriptIds].filter((id) => !htmlIds.has(id));
   assert.deepEqual(missing, [], `Missing webview element ids: ${missing.join(', ')}`);
+});
+
+test('C parser indexes macros, typedefs, struct members, prototypes and definitions', () => {
+  const root = process.cwd();
+  const headerPath = path.join(root, 'test', 'cpp-demo', 'APP_Model.h');
+  const sourcePath = path.join(root, 'test', 'cpp-demo', 'APP_Model.c');
+  const header = parseSourceFile(
+    'file:///demo/APP_Model.h',
+    headerPath,
+    fs.readFileSync(headerPath, 'utf8'),
+  );
+  const source = parseSourceFile(
+    'file:///demo/APP_Model.c',
+    sourcePath,
+    fs.readFileSync(sourcePath, 'utf8'),
+  );
+
+  const macroNames = header.decls.filter((decl) => decl.kind === 'macro').map((decl) => decl.name);
+  assert.ok(macroNames.includes('FALSE'));
+  assert.ok(macroNames.includes('TRUE'));
+
+  const typedefNames = header.decls.filter((decl) => decl.kind === 'typedef').map((decl) => decl.name);
+  assert.ok(typedefNames.includes('UINT8'));
+  assert.ok(typedefNames.includes('BOOL'));
+
+  const state = header.decls.find((decl) => decl.name === 'APP_ModelState_t' && decl.kind === 'struct');
+  assert.ok(state);
+  assert.deepEqual(state.members?.map((member) => member.name), ['state', 'enabled']);
+  assert.equal(state.isAnonymous, true);
+
+  const prototypes = header.decls.filter((decl) => decl.kind === 'prototype').map((decl) => decl.name);
+  assert.ok(prototypes.includes('APP_Model_Set29COutputs'));
+  assert.ok(!prototypes.includes('APP_Model_ReadOutput'));
+
+  const definition = source.decls.find((decl) => (
+    decl.name === 'APP_Model_Set29COutputs' && decl.kind === 'function'
+  ));
+  assert.ok(definition);
+  assert.equal(definition.isDefinition, true);
+
+  const global = source.decls.find((decl) => decl.name === 'g_app_model');
+  assert.ok(global);
+  assert.equal(global.kind, 'variable');
+  assert.equal(global.isDefinition, true);
+
+  const externState = header.decls.find((decl) => decl.name === 'g_app_model_state');
+  assert.ok(externState);
+  assert.equal(externState.isDefinition, false);
+  assert.match(externState.storage, /extern/);
+
+  const callNames = source.calls.map((call) => call.name);
+  assert.ok(callNames.includes('APP_Model_ReadOutput'));
+  assert.ok(callNames.includes('APP_Model_WriteOutput'));
+});
+
+test('C parser separates struct values from pointers and records member operators', () => {
+  const text = [
+    'typedef struct {',
+    '    UINT8 state;',
+    '    UINT8 count;',
+    '} ST;',
+    'ST g_value;',
+    'ST *gp_ptr;',
+    'void reset(void)',
+    '{',
+    '    g_value.state = 1;',
+    '    gp_ptr->state = 2;',
+    '    g_value = g_value;',
+    '    UINT8 *p = &g_value.state;',
+    '}',
+  ].join('\n');
+  const model = parseSourceFile('file:///demo/state.c', 'D:/demo/state.c', text);
+  const struct = model.decls.find((decl) => decl.name === 'ST' && decl.kind === 'struct');
+  assert.ok(struct);
+  assert.deepEqual(struct.members?.map((member) => member.name), ['state', 'count']);
+
+  const value = model.decls.find((decl) => decl.name === 'g_value');
+  const pointer = model.decls.find((decl) => decl.name === 'gp_ptr');
+  assert.ok(value);
+  assert.equal(value.isPointer, false);
+  assert.ok(pointer);
+  assert.equal(pointer.isPointer, true);
+  assert.equal(pointer.baseType, 'ST');
+
+  const valueAccess = model.memberAccesses.find((entry) => entry.owner === 'g_value');
+  const pointerAccess = model.memberAccesses.find((entry) => entry.owner === 'gp_ptr');
+  assert.ok(valueAccess);
+  assert.equal(valueAccess.operator, '.');
+  assert.ok(pointerAccess);
+  assert.equal(pointerAccess.operator, '->');
+  assert.equal(pointerAccess.member, 'state');
+
+  const valueLine = model.lines[8];
+  assert.equal(classifyVariableUse(valueLine, valueLine.indexOf('g_value'), valueLine.indexOf('g_value') + 7), 'read');
+  const assignLine = model.lines[10];
+  const firstValue = assignLine.indexOf('g_value');
+  assert.equal(classifyVariableUse(assignLine, firstValue, firstValue + 7), 'write');
+  assert.equal(classifyVariableUse(assignLine, assignLine.lastIndexOf('g_value'), assignLine.lastIndexOf('g_value') + 7), 'read');
+
+  const definition = model.decls.find((decl) => decl.name === 'reset');
+  assert.ok(definition);
+  assert.equal(definition.kind, 'function');
+  assert.equal(definition.isDefinition, true);
+});
+
+test('pointer typedef aliases keep the pointed-to struct and alias pointer flag', () => {
+  const text = [
+    'typedef struct {',
+    '    UINT8 value;',
+    '} *SP;',
+    'SP g_sp;',
+  ].join('\n');
+  const model = parseSourceFile('file:///demo/sp.c', 'D:/demo/sp.c', text);
+  const struct = model.decls.find((decl) => decl.kind === 'struct');
+  assert.ok(struct);
+  assert.ok(struct.name.startsWith('anon@'));
+  assert.deepEqual(struct.members?.map((member) => member.name), ['value']);
+  const alias = model.decls.find((decl) => decl.name === 'SP' && decl.kind === 'typedef');
+  assert.ok(alias);
+  assert.equal(alias.isPointer, true);
+  const variable = model.decls.find((decl) => decl.name === 'g_sp');
+  assert.ok(variable);
+  assert.equal(variable.baseType, 'SP');
+});
+
+test('struct pointers and struct-returning functions keep the struct type', () => {
+  const text = [
+    'struct Data {',
+    '    UINT8 value;',
+    '};',
+    'struct Data *g_data;',
+    'struct Data get_data(void)',
+    '{',
+    '    struct Data local;',
+    '    return local;',
+    '}',
+  ].join('\n');
+  const model = parseSourceFile('file:///demo/data.c', 'D:/demo/data.c', text);
+  const struct = model.decls.find((decl) => decl.name === 'Data' && decl.kind === 'struct');
+  assert.ok(struct);
+  assert.deepEqual(struct.members?.map((member) => member.name), ['value']);
+
+  const pointer = model.decls.find((decl) => decl.name === 'g_data');
+  assert.ok(pointer);
+  assert.equal(pointer.isPointer, true);
+  assert.equal(pointer.baseType, 'struct Data');
+
+  const getter = model.decls.find((decl) => decl.name === 'get_data');
+  assert.ok(getter);
+  assert.equal(getter.kind, 'function');
+  assert.equal(getter.typeText, 'struct Data');
+});
+
+test('assembly parser records labels and call targets', () => {
+  const text = [
+    '    .global main',
+    'main:',
+    '    bl helper',
+    '    bx lr',
+    'helper:',
+    '    bx lr',
+  ].join('\n');
+  const model = parseSourceFile('file:///demo/boot.s', 'D:/demo/boot.s', text);
+  const labels = model.decls.filter((decl) => decl.kind === 'label').map((decl) => decl.name);
+  assert.ok(labels.includes('main'));
+  assert.ok(labels.includes('helper'));
+  const calls = model.asmRefs.filter((entry) => entry.kind === 'call').map((entry) => entry.name);
+  assert.ok(calls.includes('helper'));
+  assert.equal(model.isAssembly, true);
+});
+
+test('search patterns support plain text, whole words and regular expressions', () => {
+  const plain = buildSearchRegExp('state', { regex: false, caseSensitive: false, wholeWord: false });
+  assert.ok(plain.test('g_value.state = 1;'));
+  const whole = buildSearchRegExp('state', { regex: false, caseSensitive: false, wholeWord: true });
+  assert.equal(whole.test('state_machine'), false);
+  assert.equal(whole.test('g_value.state'), true);
+  const regex = buildSearchRegExp('APP_\\w+', { regex: true, caseSensitive: true, wholeWord: false });
+  assert.ok(regex.test('void APP_Model_Init(void);'));
 });
 
 function extractName(line: string): string {

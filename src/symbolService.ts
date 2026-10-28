@@ -10,6 +10,20 @@ import {
   type DefinitionCandidate,
   type ReferenceClassification,
 } from './core';
+import {
+  isAsmFile,
+  isCFile,
+  type CDecl,
+  type CFileModel,
+  type CKind,
+} from './cParser';
+import {
+  declKey,
+  declLocation,
+  ProjectIndex,
+  type CReferenceEntry,
+  type CTypeTarget,
+} from './projectIndex';
 import type {
   ContextLine,
   ContextMatchView,
@@ -162,6 +176,7 @@ export class SymbolService {
   constructor(
     private readonly log: (message: string) => void,
     private readonly getConfig: () => WorkspaceAnalyzerConfig,
+    private readonly projectIndex?: ProjectIndex,
   ) {}
 
   clearCaches(): void {
@@ -187,6 +202,53 @@ export class SymbolService {
     }
     if (COMMON_KEYWORDS.has(cursor.word)) {
       throw new NoSymbolError(`“${cursor.word}” 是语言关键字，不是函数或变量。`);
+    }
+
+    // C / header / assembly files are resolved from the extension's own symbol
+    // database first. This is what makes macros, struct members, pointer vs
+    // value variables and declaration/definition pairs behave like Source
+    // Insight instead of a plain language-server text search.
+    if (this.canUseIndex(document)) {
+      try {
+        const indexed = await this.projectIndex!.resolveAt(
+          document.uri,
+          cursor.range.start.line,
+          cursor.range.start.character,
+          { enclosing: trackingMode === 'enclosing' },
+        );
+        if (indexed) {
+          const symbol = this.symbolFromIndex(indexed.decl, indexed.model);
+          if (indexed.memberAccess) {
+            symbol.detail = `${indexed.memberAccess.ownerName} ${indexed.memberAccess.operator} ${indexed.memberAccess.member} · ${symbol.detail ?? ''}`.trim();
+          }
+          const matchSymbols: HostSymbol[] = [symbol];
+          for (const alternative of indexed.alternatives) {
+            if (declKey(alternative) === declKey(indexed.decl)) {
+              continue;
+            }
+            const model = this.projectIndex!.modelOfUri(alternative.fileUri);
+            if (!model) {
+              continue;
+            }
+            const candidate = this.symbolFromIndex(alternative, model);
+            if (!matchSymbols.some((entry) => entry.key === candidate.key)) {
+              matchSymbols.push(candidate);
+            }
+          }
+          return {
+            symbol,
+            matches: matchSymbols.map((entry, index) => this.matchView(entry, index)),
+            matchSymbols,
+            word: cursor.word,
+            unresolved: false,
+          };
+        }
+      } catch (error) {
+        if (error instanceof AnalysisCancelledError) {
+          throw error;
+        }
+        this.log(`Index resolution failed: ${String(error)}`);
+      }
     }
 
     if (trackingMode === 'enclosing') {
@@ -333,6 +395,90 @@ export class SymbolService {
     return resolution.symbol;
   }
 
+  private canUseIndex(document: vscode.TextDocument): boolean {
+    if (!this.projectIndex) {
+      return false;
+    }
+    const path = document.uri.fsPath;
+    return isCFile(path) || isAsmFile(path);
+  }
+
+  private symbolFromIndex(
+    decl: CDecl,
+    model: CFileModel,
+  ): HostSymbol {
+    const index = this.projectIndex!;
+    const definitionEntry = index.definitionOf(decl, model);
+    const primary = definitionEntry.decl;
+    const primaryModel = definitionEntry.model;
+    const typeTarget = index.resolveTypeTarget(primary);
+    const declarationEntry = index.declarationOf(primary, primaryModel);
+    const location = declLocation(primary);
+    const effectivePointer = primary.isPointer || typeTarget.isPointer;
+    const ownerRange = primary.kind === 'label'
+      ? primaryModel.owners.find((entry) => entry.name === primary.name && entry.kind === 'label')
+      : undefined;
+    const fullStart = primary.bodyStartLine
+      ?? ownerRange?.startLine
+      ?? primary.line;
+    const fullEnd = primary.bodyEndLine
+      ?? ownerRange?.endLine
+      ?? (primary.kind === 'variable' ? primary.endLine : primary.line);
+    const descriptor = describeCDeclaration(primary, typeTarget, effectivePointer);
+    const tags = buildCTags(primary, typeTarget, effectivePointer);
+    return {
+      key: `${makeSymbolKey(primary.name, location)}:${primary.kind}`,
+      name: primary.name,
+      kindId: primary.kind,
+      kindLabel: descriptor.label,
+      isFunction: primary.kind === 'function' || primary.kind === 'prototype',
+      isVariable: primary.kind === 'variable'
+        || primary.kind === 'field'
+        || primary.kind === 'enumMember',
+      isContainer: primary.kind === 'struct'
+        || primary.kind === 'union'
+        || primary.kind === 'enum',
+      isMacro: primary.kind === 'macro',
+      languageId: primaryModel.isAssembly ? 'asm' : 'c',
+      definition: location,
+      declaration: declarationEntry ? declLocation(declarationEntry.decl) : undefined,
+      fullRange: fullEnd > fullStart || primary.kind === 'function'
+        ? { startLine: fullStart, endLine: fullEnd }
+        : undefined,
+      detail: makeLineExcerpt(primary.signature || primary.typeText || primary.name, 200),
+      cKind: primary.kind,
+      indexKey: declKey(primary),
+      isPointer: effectivePointer,
+      isArray: primary.isArray,
+      isStructLike: primary.kind === 'struct' || primary.kind === 'union',
+      isEnum: primary.kind === 'enum' || primary.kind === 'enumMember',
+      isTypedef: primary.kind === 'typedef',
+      isLabel: primary.kind === 'label',
+      isPrototype: primary.kind === 'prototype',
+      isDefinition: primary.isDefinition,
+      isMacroFunctionLike: Boolean(primary.isFunctionLikeMacro),
+      storage: primary.storage,
+      typeText: primary.typeText,
+      baseType: primary.baseType,
+      pointerLevel: effectivePointer ? Math.max(1, primary.pointerLevel) : 0,
+      tags,
+      indexDecl: primary,
+    };
+  }
+
+  private mapIndexReference(entry: CReferenceEntry): HostReference {
+    const caller = entry.owner && entry.ownerModel
+      ? this.symbolFromIndex(entry.owner, entry.ownerModel)
+      : undefined;
+    return {
+      location: entry.location,
+      role: entry.role as HostReference['role'],
+      lineText: entry.lineText,
+      caller,
+      callerName: entry.ownerName || caller?.name || '全局',
+    };
+  }
+
   async symbolFromLocation(
     location: SourceLocation,
     expectedName: string | undefined,
@@ -377,6 +523,20 @@ export class SymbolService {
   ): Promise<void> {
     if (this.declarationCache.has(symbol.key)) {
       symbol.declaration = this.declarationCache.get(symbol.key);
+      return;
+    }
+    if (symbol.indexDecl && this.projectIndex) {
+      const model = this.projectIndex.modelOfUri(symbol.indexDecl.fileUri);
+      const declaration = model
+        ? this.projectIndex.declarationOf(symbol.indexDecl, model)
+        : undefined;
+      symbol.declaration = declaration && !locationsEqual(
+        declLocation(declaration.decl),
+        symbol.definition,
+      )
+        ? declLocation(declaration.decl)
+        : symbol.declaration;
+      this.declarationCache.set(symbol.key, symbol.declaration);
       return;
     }
     const result = await this.executeProvider<unknown>(
@@ -425,6 +585,23 @@ export class SymbolService {
     const cached = this.referenceCache.get(symbol.key);
     if (cached) {
       return cached;
+    }
+    if (symbol.indexDecl && this.projectIndex) {
+      const config = this.getConfig();
+      const entries = this.projectIndex.referencesOf(symbol.indexDecl)
+        .slice(0, config.maxReferences);
+      const result = entries.map((entry) => this.mapIndexReference(entry));
+      if (config.sortReferencesByFile) {
+        result.sort((a, b) => {
+          const uriA = a.location.uri;
+          const uriB = b.location.uri;
+          return uriA !== uriB
+            ? uriA.localeCompare(uriB)
+            : a.location.startLine - b.location.startLine;
+        });
+      }
+      this.referenceCache.set(symbol.key, result);
+      return result;
     }
     const results = await this.executeProvider<unknown>(
       PROVIDER_REFERENCES,
@@ -506,6 +683,15 @@ export class SymbolService {
     const cached = this.calleeCache.get(symbol.key);
     if (cached) {
       return cached;
+    }
+    if (symbol.indexDecl && this.projectIndex) {
+      const entries = this.projectIndex.calleesOf(symbol.indexDecl);
+      const result = entries.map((entry) => ({
+        symbol: this.symbolFromIndex(entry.decl, entry.model),
+        count: entry.count,
+      }));
+      this.calleeCache.set(symbol.key, result);
+      return result;
     }
     if (!symbol.isFunction || !symbol.fullRange) {
       return [];
@@ -606,6 +792,18 @@ export class SymbolService {
     if (this.typeCache.has(symbol.key)) {
       return this.typeCache.get(symbol.key);
     }
+    if (symbol.indexDecl && this.projectIndex) {
+      const target = this.projectIndex.resolveTypeTarget(symbol.indexDecl);
+      let indexedType: HostSymbol | undefined;
+      if (target.decl && declKey(target.decl) !== declKey(symbol.indexDecl)) {
+        const model = target.model ?? this.projectIndex.modelOfUri(target.decl.fileUri);
+        if (model) {
+          indexedType = this.symbolFromIndex(target.decl, model);
+        }
+      }
+      this.typeCache.set(symbol.key, indexedType);
+      return indexedType;
+    }
     let typeSymbol: HostSymbol | undefined;
     const result = await this.executeProvider<unknown>(
       PROVIDER_TYPE_DEFINITION,
@@ -657,6 +855,15 @@ export class SymbolService {
     if (cached) {
       return cached;
     }
+    if (symbol.indexDecl && this.projectIndex) {
+      const { members, model } = this.projectIndex.membersOf(symbol.indexDecl);
+      const resolvedModel = model ?? this.projectIndex.modelOfUri(symbol.indexDecl.fileUri);
+      const result = resolvedModel
+        ? members.map((member) => this.symbolFromIndex(member, resolvedModel))
+        : [];
+      this.memberCache.set(symbol.key, result);
+      return result;
+    }
     const document = await this.getDocument(
       vscode.Uri.parse(symbol.definition.uri),
       isStale,
@@ -691,6 +898,12 @@ export class SymbolService {
     if (cached) {
       return cached;
     }
+    if (symbol.indexDecl && this.projectIndex) {
+      const aliases = this.projectIndex.aliasesOf(symbol.indexDecl);
+      const result = aliases.map((entry) => this.symbolFromIndex(entry.decl, entry.model));
+      this.derivedCache.set(symbol.key, result);
+      return result;
+    }
     const result = await this.executeProvider<unknown>(
       PROVIDER_IMPLEMENTATION,
       [
@@ -712,6 +925,59 @@ export class SymbolService {
     }
     this.derivedCache.set(symbol.key, derived);
     return derived;
+  }
+
+  async getInstances(
+    symbol: HostSymbol,
+  ): Promise<Array<{ symbol: HostSymbol; isPointer: boolean; isField: boolean }>> {
+    if (!symbol.indexDecl || !this.projectIndex) {
+      return [];
+    }
+    return this.projectIndex.instancesOf(symbol.indexDecl).map((entry) => ({
+      symbol: this.symbolFromIndex(entry.decl, entry.model),
+      isPointer: entry.isPointer,
+      isField: entry.isField,
+    }));
+  }
+
+  async getMemberUses(
+    symbol: HostSymbol,
+  ): Promise<Array<{
+    member: string;
+    operator: '.' | '->';
+    field?: HostSymbol;
+    sites: Array<{ location: SourceLocation; role: 'read' | 'write' }>;
+  }>> {
+    if (!symbol.indexDecl || !this.projectIndex) {
+      return [];
+    }
+    return this.projectIndex.memberUsesOf(symbol.indexDecl).map((entry) => {
+      const target = entry.field ? this.projectIndex!.resolveTypeTarget(symbol.indexDecl!) : undefined;
+      const model = target?.model ?? this.projectIndex!.modelOfUri(symbol.indexDecl!.fileUri);
+      return {
+        member: entry.member,
+        operator: entry.operator,
+        field: entry.field && model
+          ? this.symbolFromIndex(entry.field, model)
+          : undefined,
+        sites: entry.sites,
+      };
+    });
+  }
+
+  async getDeclarationSites(
+    symbol: HostSymbol,
+  ): Promise<Array<{ symbol: HostSymbol; role: 'definition' | 'declaration' }>> {
+    if (!symbol.indexDecl || !this.projectIndex) {
+      return [];
+    }
+    return this.projectIndex.declarationsOf(symbol.indexDecl)
+      .filter((entry) => !locationsEqual(declLocation(entry.decl), symbol.definition)
+        || entry.role === 'declaration')
+      .map((entry) => ({
+        symbol: this.symbolFromIndex(entry.decl, entry.model),
+        role: entry.role,
+      }));
   }
 
   async getContext(
@@ -1138,6 +1404,103 @@ function describeKind(kind: number, name: string, languageId: string): { id: str
     default:
       return { id: 'symbol', label: '符号' };
   }
+}
+
+function describeCDeclaration(
+  decl: CDecl,
+  target: CTypeTarget,
+  pointer: boolean,
+): { label: string } {
+  const structLike = target.decl?.kind === 'struct' || target.decl?.kind === 'union';
+  const unionLike = target.decl?.kind === 'union';
+  const enumLike = target.decl?.kind === 'enum';
+  const anonymous = decl.name.startsWith('anon@');
+  switch (decl.kind) {
+    case 'function':
+      return { label: '函数' };
+    case 'prototype':
+      return { label: '函数原型' };
+    case 'macro':
+      return { label: decl.isFunctionLikeMacro ? '函数式宏' : '宏' };
+    case 'struct':
+      return { label: anonymous ? '匿名结构体' : '结构体' };
+    case 'union':
+      return { label: anonymous ? '匿名联合体' : '联合体' };
+    case 'enum':
+      return { label: anonymous ? '匿名枚举' : '枚举' };
+    case 'enumMember':
+      return { label: '枚举成员' };
+    case 'typedef':
+      if (structLike) {
+        if (pointer) {
+          return { label: unionLike ? '联合体指针类型' : '结构体指针类型' };
+        }
+        return { label: unionLike ? '联合体类型别名' : '结构体类型别名' };
+      }
+      if (enumLike) {
+        return { label: '枚举类型别名' };
+      }
+      return { label: pointer ? '指针类型别名' : '类型别名' };
+    case 'field':
+      if (structLike) {
+        return { label: pointer ? '结构体指针成员' : '结构体成员' };
+      }
+      return { label: pointer ? '指针成员' : '成员' };
+    case 'label':
+      return { label: '汇编标签' };
+    case 'param':
+      return { label: '参数' };
+    case 'variable':
+      if (structLike) {
+        if (pointer) {
+          return { label: unionLike ? '联合体指针' : '结构体指针' };
+        }
+        return { label: unionLike ? '联合体变量' : '结构体变量' };
+      }
+      if (enumLike) {
+        return { label: '枚举变量' };
+      }
+      if (decl.isArray) {
+        return { label: '数组' };
+      }
+      return { label: pointer ? '指针' : '变量' };
+    default:
+      return { label: '符号' };
+  }
+}
+
+function buildCTags(
+  decl: CDecl,
+  target: CTypeTarget,
+  pointer: boolean,
+): string[] {
+  const tags: string[] = [];
+  if (pointer) {
+    tags.push(decl.pointerLevel > 1 ? `指针×${decl.pointerLevel}` : '指针');
+  }
+  if (decl.isArray) {
+    tags.push('数组');
+  }
+  if (decl.kind === 'prototype') {
+    tags.push('原型');
+  } else if (decl.kind !== 'field' && decl.kind !== 'macro' && !decl.isDefinition) {
+    tags.push('声明');
+  }
+  if (decl.storage) {
+    for (const word of decl.storage.split(/\s+/)) {
+      tags.push(word);
+    }
+  }
+  if (decl.isConst) {
+    tags.push('const');
+  }
+  if (decl.isFunctionLikeMacro) {
+    tags.push('函数式');
+  }
+  if (decl.kind === 'typedef' && target.decl) {
+    tags.push(`→ ${target.decl.name}`);
+  }
+  return [...new Set(tags)];
 }
 
 function isMacroName(name: string, languageId: string): boolean {

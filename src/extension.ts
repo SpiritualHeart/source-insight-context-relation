@@ -70,6 +70,21 @@ export function activate(context: vscode.ExtensionContext): void {
   register('sourceInsight.relationType', async () => {
     await controller.setRelationMode('type');
   });
+  register('sourceInsight.relationInstances', async () => {
+    await controller.setRelationMode('instances');
+  });
+  register('sourceInsight.relationMemberAccess', async () => {
+    await controller.setRelationMode('memberAccess');
+  });
+  register('sourceInsight.relationDeclarations', async () => {
+    await controller.setRelationMode('declarations');
+  });
+  register('sourceInsight.searchProject', async () => {
+    await controller.searchProject();
+  });
+  register('sourceInsight.rebuildIndex', async () => {
+    await controller.rebuildIndex();
+  });
   register('sourceInsight.increaseDepth', async () => {
     await controller.adjustDepth(1);
   });
@@ -96,6 +111,8 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.commands.executeCommand('vscode.open', guide);
     }
   });
+
+  void controller.startBackgroundIndex();
 
   if (process.env.SOURCE_INSIGHT_TEST === '1') {
     register('sourceInsight.__getState', () => controller.getStateForTests());

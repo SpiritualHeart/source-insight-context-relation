@@ -42,6 +42,14 @@ export function getWebviewHtml(
       <div class="topbar-right">
         <span class="tracking-state" id="tracking-state" title="自动符号跟踪"></span>
         <div class="provider-state" id="provider-state" title="当前符号"></div>
+        <button class="tool-button" id="search-button" type="button" title="工程搜索（支持正则表达式）">
+          <span class="tool-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2">
+              <circle cx="7" cy="7" r="4.2"/><path d="m10.2 10.2 3.2 3.2"/>
+            </svg>
+          </span>
+          <span>搜索</span>
+        </button>
         <button class="tool-button" id="follow-button" type="button" title="跟随编辑器光标" aria-pressed="true">
           <span class="tool-icon" aria-hidden="true">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2">
@@ -59,6 +67,23 @@ export function getWebviewHtml(
             </svg>
           </span>
           <span>刷新</span>
+        </button>
+        <button class="tool-button icon-only" id="index-button" type="button" title="重建 C 符号索引">
+          <span class="tool-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2">
+              <ellipse cx="8" cy="3.7" rx="4.8" ry="1.9"/>
+              <path d="M3.2 3.7v8.6c0 1 2.1 1.9 4.8 1.9s4.8-.9 4.8-1.9V3.7"/>
+              <path d="M3.2 8c0 1 2.1 1.9 4.8 1.9s4.8-.9 4.8-1.9"/>
+            </svg>
+          </span>
+        </button>
+        <button class="tool-button icon-only" id="settings-button" type="button" title="打开 Source Insight 设置">
+          <span class="tool-icon" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.2">
+              <circle cx="8" cy="8" r="2.2"/>
+              <path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M3.5 12.5l1.1-1.1M11.4 4.6l1.1-1.1"/>
+            </svg>
+          </span>
         </button>
       </div>
     </header>

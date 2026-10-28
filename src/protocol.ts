@@ -75,7 +75,10 @@ export type RelationMode =
   | 'both'
   | 'contains'
   | 'type'
-  | 'derived';
+  | 'derived'
+  | 'instances'
+  | 'memberAccess'
+  | 'declarations';
 
 export interface RelationModeOption {
   value: RelationMode;
@@ -92,9 +95,10 @@ export type RelationRole =
   | 'member'
   | 'type'
   | 'derived'
+  | 'instance'
   | 'global';
 
-export type ReferenceSiteRole = 'call' | 'read' | 'write' | 'reference';
+export type ReferenceSiteRole = 'call' | 'read' | 'write' | 'address' | 'reference';
 
 export interface RelationNodeSiteView {
   /** One-based line number at the use/call site. */
@@ -118,6 +122,10 @@ export interface RelationNodeView {
   isFunction?: boolean;
   isContainer?: boolean;
   isVariable?: boolean;
+  /** Short attribute chips such as 指针 / 数组 / 宏 / extern / 原型. */
+  tags?: string[];
+  /** False for synthetic nodes (for example project search results). */
+  hasSymbol?: boolean;
   /** Optional location column; hidden by default per Source Insight-style clean view. */
   locationLabel?: string;
   children: RelationNodeView[];
@@ -128,6 +136,8 @@ export interface RelationCounts {
   callees: number;
   references: number;
   members: number;
+  instances?: number;
+  declarations?: number;
   total: number;
 }
 
@@ -182,6 +192,9 @@ export type NodeAction =
   | 'showType'
   | 'showContains'
   | 'showDerived'
+  | 'showInstances'
+  | 'showMemberAccess'
+  | 'showDeclarations'
   | 'setRoot'
   | 'expand'
   | 'collapse'
@@ -281,6 +294,18 @@ export interface RefreshMessage {
   type: 'refresh';
 }
 
+export interface SearchProjectMessage {
+  type: 'searchProject';
+}
+
+export interface RebuildIndexMessage {
+  type: 'rebuildIndex';
+}
+
+export interface OpenSettingsMessage {
+  type: 'openSettings';
+}
+
 export interface ToggleFollowMessage {
   type: 'toggleFollow';
 }
@@ -317,6 +342,9 @@ export type WebviewMessage =
   | CloseRelationTabMessage
   | SelectRelationTabMessage
   | RefreshMessage
+  | SearchProjectMessage
+  | RebuildIndexMessage
+  | OpenSettingsMessage
   | ToggleFollowMessage
   | FocusPaneMessage
   | CopyTextMessage

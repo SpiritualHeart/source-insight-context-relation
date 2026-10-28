@@ -1,3 +1,4 @@
+import type { CDecl } from './cParser';
 import type {
   ContextLine,
   ContextMatchView,
@@ -26,9 +27,28 @@ export interface HostSymbol {
     endLine: number;
   };
   detail?: string;
+  /** C symbol kind from the project index. */
+  cKind?: string;
+  indexKey?: string;
+  isPointer?: boolean;
+  isArray?: boolean;
+  isStructLike?: boolean;
+  isEnum?: boolean;
+  isTypedef?: boolean;
+  isLabel?: boolean;
+  isPrototype?: boolean;
+  isDefinition?: boolean;
+  isMacroFunctionLike?: boolean;
+  storage?: string;
+  typeText?: string;
+  baseType?: string;
+  pointerLevel?: number;
+  tags?: string[];
+  /** Internal C declaration backing this symbol (project index only). */
+  indexDecl?: CDecl;
 }
 
-export type HostReferenceRole = 'call' | 'read' | 'write' | 'reference' | 'declaration';
+export type HostReferenceRole = 'call' | 'read' | 'write' | 'address' | 'reference' | 'declaration';
 
 export interface HostReference {
   location: SourceLocation;
@@ -59,6 +79,10 @@ export interface HostNode {
   expandable: boolean;
   cycle: boolean;
   locationLabel?: string;
+  /** Short attribute chips such as 指针 / 数组 / 声明 / 值实例. */
+  tags?: string[];
+  /** Symbol name to highlight when previewing a use/call site. */
+  siteName?: string;
   depth: number;
   parent?: HostNode;
 }
@@ -164,6 +188,12 @@ export function relationModeLabel(mode: RelationMode): string {
       return '类型';
     case 'derived':
       return '派生类型';
+    case 'instances':
+      return '变量实例';
+    case 'memberAccess':
+      return '成员访问';
+    case 'declarations':
+      return '声明 / 定义';
     default:
       return '引用';
   }

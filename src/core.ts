@@ -2,7 +2,7 @@ import type { SourceLocation } from './protocol';
 
 /** Pure helpers kept free of the `vscode` module so they can be unit tested. */
 
-const HEADER_EXTENSION = /\.(?:h|hh|hpp|hxx|h\+\+|inl|ipp|tpp)$/i;
+const HEADER_EXTENSION = /\.(?:h|hh|hpp|hxx|h\+\+|inl|ipp|tpp|inc)$/i;
 const C_LIKE_LANGUAGES = new Set([
   'c',
   'cpp',

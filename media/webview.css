@@ -1,7 +1,7 @@
 :root {
   --si-font-ui: var(--vscode-font-family, "Segoe UI", sans-serif);
   --si-font-code: var(--vscode-editor-font-family, Consolas, monospace);
-  --si-font-code-size: var(--vscode-editor-font-size, 12px);
+  --si-font-code-size: max(13px, var(--vscode-editor-font-size, 13px));
   --si-bg: var(--vscode-panel-background, var(--vscode-editor-background, #1e1e1e));
   --si-editor-bg: var(--vscode-editor-background, #1e1e1e);
   --si-fg: var(--vscode-editor-foreground, #cccccc);
@@ -41,7 +41,7 @@ body {
   color: var(--si-fg);
   background: var(--si-bg);
   font-family: var(--si-font-ui);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
@@ -147,7 +147,7 @@ button:disabled {
 }
 
 .brand-title {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.015em;
 }
@@ -155,7 +155,7 @@ button:disabled {
 .brand-subtitle {
   overflow: hidden;
   color: var(--si-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
 }
 
@@ -171,7 +171,7 @@ button:disabled {
   border: 1px solid var(--si-line);
   border-radius: 9px;
   color: var(--si-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -185,7 +185,7 @@ button:disabled {
   max-width: 220px;
   margin-right: 3px;
   color: var(--si-muted);
-  font-size: 10.5px;
+  font-size: 12px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -229,12 +229,22 @@ button:disabled {
 }
 
 .tool-button {
-  height: 24px;
-  padding: 0 7px;
+  height: 29px;
+  padding: 0 8px;
   border: 1px solid transparent;
   border-radius: 4px;
   color: var(--si-muted);
-  font-size: 10.5px;
+  font-size: 12px;
+}
+
+.tool-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.tool-button.icon-only {
+  width: 29px;
+  padding: 0;
 }
 
 .tool-button:hover,
@@ -321,15 +331,15 @@ button:disabled {
   flex: 0 0 auto;
   align-items: center;
   gap: 4px;
-  height: 21px;
-  max-width: 146px;
-  padding: 0 6px;
+  height: 26px;
+  max-width: 168px;
+  padding: 0 7px;
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 4px 4px 0 0;
   color: var(--si-muted);
   background: transparent;
-  font-size: 9.5px;
+  font-size: 11.5px;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -352,14 +362,14 @@ button:disabled {
 
 .relation-tab-close {
   display: inline-flex;
-  flex: 0 0 13px;
+  flex: 0 0 16px;
   align-items: center;
   justify-content: center;
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   border-radius: 3px;
   color: var(--si-muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1;
 }
 
@@ -370,18 +380,18 @@ button:disabled {
 
 .relation-tab-add {
   display: inline-flex;
-  flex: 0 0 20px;
+  flex: 0 0 26px;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   margin-bottom: 1px;
   padding: 0;
   border: 0;
   border-radius: 3px;
   color: var(--si-muted);
   background: transparent;
-  font-size: 14px;
+  font-size: 17px;
   cursor: pointer;
 }
 
@@ -392,7 +402,7 @@ button:disabled {
 
 .pane-head {
   display: flex;
-  flex: 0 0 31px;
+  flex: 0 0 38px;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -411,7 +421,7 @@ button:disabled {
 
 .pane-kicker {
   color: var(--si-accent);
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -420,7 +430,7 @@ button:disabled {
   overflow: hidden;
   color: var(--si-fg);
   font-family: var(--si-font-code);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -434,16 +444,26 @@ button:disabled {
 }
 
 .icon-button {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
   color: var(--si-muted);
 }
 
+.icon-button svg {
+  width: 19px;
+  height: 19px;
+}
+
 .icon-button.tiny {
-  width: 18px;
-  height: 18px;
-  font-size: 12px;
+  width: 23px;
+  height: 23px;
+  font-size: 14px;
+}
+
+.icon-button.tiny svg {
+  width: 14px;
+  height: 14px;
 }
 
 .icon-button.is-active {
@@ -454,13 +474,13 @@ button:disabled {
 .symbol-badge {
   display: inline-flex;
   align-items: center;
-  height: 17px;
-  padding: 0 6px;
+  height: 20px;
+  padding: 0 7px;
   border: 1px solid color-mix(in srgb, var(--si-accent) 28%, transparent);
   border-radius: 9px;
   color: var(--si-link);
   background: var(--si-accent-soft);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -473,10 +493,10 @@ button:disabled {
 
 .context-file {
   overflow: hidden;
-  max-width: 220px;
+  max-width: 280px;
   color: var(--si-muted);
   font-family: var(--si-font-code);
-  font-size: 9px;
+  font-size: 11.5px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -487,12 +507,12 @@ button:disabled {
   gap: 2px;
   margin-right: 2px;
   color: var(--si-muted);
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .match-nav .icon-button {
   color: var(--si-link);
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .layout-group {
@@ -517,7 +537,7 @@ button:disabled {
 
 .context-viewbar {
   display: flex;
-  flex: 0 0 27px;
+  flex: 0 0 34px;
   align-items: center;
   gap: 8px;
   padding: 0 8px;
@@ -533,11 +553,11 @@ button:disabled {
 }
 
 .seg-button {
-  height: 20px;
-  padding: 0 8px;
+  height: 26px;
+  padding: 0 10px;
   border-right: 1px solid var(--si-line);
   color: var(--si-muted);
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .seg-button:last-child {
@@ -558,14 +578,14 @@ button:disabled {
   overflow: hidden;
   color: var(--si-muted);
   font-family: var(--si-font-code);
-  font-size: 9.5px;
+  font-size: 11px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .relation-options {
   display: flex;
-  flex: 0 0 29px;
+  flex: 0 0 36px;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -576,7 +596,7 @@ button:disabled {
 
 .option-label {
   color: var(--si-muted);
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -589,15 +609,15 @@ button:disabled {
 }
 
 .select-wrap select {
-  height: 21px;
-  max-width: 150px;
-  padding: 0 20px 0 5px;
+  height: 26px;
+  max-width: 190px;
+  padding: 0 22px 0 7px;
   border: 1px solid var(--si-line);
   border-radius: 4px;
   color: var(--si-fg);
   background: var(--vscode-dropdown-background, var(--si-card));
   font-family: inherit;
-  font-size: 10px;
+  font-size: 12px;
   outline: none;
 }
 
@@ -609,25 +629,25 @@ button:disabled {
 }
 
 .depth-value {
-  min-width: 14px;
+  min-width: 18px;
   color: var(--si-fg);
   font-family: var(--si-font-code);
-  font-size: 10.5px;
+  font-size: 12.5px;
   text-align: center;
 }
 
 .relation-counts {
   overflow: hidden;
   color: var(--si-muted);
-  font-size: 9.5px;
+  font-size: 11px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .text-button.compact {
-  height: 19px;
-  padding: 0 3px;
-  font-size: 9px;
+  height: 24px;
+  padding: 0 5px;
+  font-size: 10.5px;
 }
 
 /* ---------------------------------------------------------------- splitter */
@@ -731,9 +751,9 @@ body.is-resizing {
   position: sticky;
   left: 0;
   z-index: 1;
-  flex: 0 0 49px;
-  width: 49px;
-  padding-right: 10px;
+  flex: 0 0 56px;
+  width: 56px;
+  padding-right: 12px;
   color: color-mix(in srgb, var(--si-muted) 72%, transparent);
   background: var(--si-editor-bg);
   text-align: right;
@@ -946,7 +966,7 @@ body.is-resizing {
 
 .root-role {
   color: var(--si-accent);
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
@@ -958,7 +978,7 @@ body.is-resizing {
   overflow: hidden;
   color: var(--si-fg);
   font-family: var(--si-font-code);
-  font-size: 12.5px;
+  font-size: 14.5px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -974,9 +994,20 @@ body.is-resizing {
 }
 
 .root-kind {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
   margin-top: 3px;
   color: var(--si-muted);
-  font-size: 9.5px;
+  font-size: 11px;
+}
+
+.root-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-left: 3px;
 }
 
 .forest-col {
@@ -1001,13 +1032,13 @@ body.is-resizing {
 .node-card {
   position: relative;
   display: flex;
-  flex: 0 0 218px;
+  flex: 0 0 252px;
   align-items: center;
-  gap: 5px;
-  min-height: 30px;
+  gap: 6px;
+  min-height: 36px;
   min-width: 0;
-  max-width: 280px;
-  padding: 4px 7px 4px 4px;
+  max-width: 340px;
+  padding: 6px 9px 6px 5px;
   border: 1px solid var(--si-border);
   border-left: 2px solid var(--si-line-strong);
   border-radius: 5px;
@@ -1041,6 +1072,29 @@ body.is-resizing {
   border-left-color: var(--si-muted);
 }
 
+.node-card.role-instance {
+  border-left-color: var(--vscode-charts-foreground, #cccccc);
+}
+
+.node-card.role-declaration {
+  border-left-color: var(--vscode-charts-orange, #d18616);
+}
+
+.tag-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 17px;
+  padding: 0 5px;
+  border: 1px solid color-mix(in srgb, var(--si-fg) 14%, transparent);
+  border-radius: 8px;
+  color: var(--si-muted);
+  background: color-mix(in srgb, var(--si-fg) 4%, transparent);
+  font-family: var(--si-font-code);
+  font-size: 9.5px;
+  white-space: nowrap;
+}
+
 .node-card:hover,
 .node-card.is-selected {
   border-color: color-mix(in srgb, var(--si-accent) 55%, var(--si-border));
@@ -1061,17 +1115,17 @@ body.is-resizing {
 
 .chevron {
   display: inline-flex;
-  flex: 0 0 16px;
+  flex: 0 0 20px;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 20px;
+  width: 20px;
+  height: 24px;
   padding: 0;
   border: 0;
   border-radius: 3px;
   color: var(--si-muted);
   background: transparent;
-  font-size: 10px;
+  font-size: 12px;
   cursor: pointer;
 }
 
@@ -1086,21 +1140,21 @@ body.is-resizing {
 
 .node-glyph {
   display: inline-grid;
-  flex: 0 0 19px;
-  width: 19px;
-  height: 19px;
+  flex: 0 0 23px;
+  width: 23px;
+  height: 23px;
   place-items: center;
   border-radius: 4px;
   color: var(--si-link);
   background: color-mix(in srgb, var(--si-accent) 10%, transparent);
   font-family: var(--si-font-code);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .root-card .node-glyph {
-  width: 19px;
-  height: 19px;
+  width: 23px;
+  height: 23px;
 }
 
 .node-main {
@@ -1114,7 +1168,7 @@ body.is-resizing {
 .node-name {
   overflow: hidden;
   font-family: var(--si-font-code);
-  font-size: 10.8px;
+  font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1125,7 +1179,7 @@ body.is-resizing {
   margin-top: 1px;
   color: var(--si-muted);
   font-family: var(--si-font-code);
-  font-size: 8.5px;
+  font-size: 10px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -1133,25 +1187,24 @@ body.is-resizing {
 .node-sites {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  max-height: 78px;
-  margin-top: 2px;
-  overflow: auto;
+  gap: 2px;
+  margin-top: 3px;
+  overflow: visible;
 }
 
 .node-site {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 15px;
+  gap: 5px;
+  min-height: 19px;
   width: 100%;
-  padding: 0 3px;
+  padding: 1px 4px;
   border: 0;
-  border-radius: 2px;
+  border-radius: 3px;
   color: var(--si-link);
   background: transparent;
   font-family: var(--si-font-code);
-  font-size: 9px;
+  font-size: 11.5px;
   text-align: left;
   cursor: pointer;
 }
@@ -1174,7 +1227,7 @@ body.is-resizing {
 .node-site-label,
 .node-site-role {
   color: var(--si-muted);
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .node-site-role {
@@ -1187,7 +1240,7 @@ body.is-resizing {
 }
 
 .outline-sites .node-sites {
-  max-height: 58px;
+  overflow: visible;
 }
 
 .node-badges {
@@ -1203,12 +1256,12 @@ body.is-resizing {
 .mini-badge {
   display: inline-flex;
   align-items: center;
-  height: 15px;
-  padding: 0 4px;
-  border-radius: 7px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 8px;
   color: var(--si-muted);
   background: color-mix(in srgb, var(--si-fg) 7%, transparent);
-  font-size: 8px;
+  font-size: 9.5px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -1292,13 +1345,13 @@ body.is-resizing {
 .declaration-glyph {
   color: var(--si-link);
   font-family: var(--si-font-code);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .declaration-name {
   overflow: hidden;
   font-family: var(--si-font-code);
-  font-size: 10.5px;
+  font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -1343,7 +1396,7 @@ body.is-resizing {
   gap: 6px;
   margin-bottom: 8px;
   color: var(--si-muted);
-  font-size: 9px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1426,7 +1479,7 @@ body.is-resizing {
   overflow: hidden;
   color: var(--si-fg);
   font-family: var(--si-font-code);
-  font-size: 10.5px;
+  font-size: 12.5px;
   white-space: nowrap;
   text-overflow: ellipsis;
   cursor: pointer;
@@ -1469,7 +1522,7 @@ body.is-resizing {
   border: 0;
   color: var(--si-muted);
   background: transparent;
-  font-size: 9px;
+  font-size: 11px;
   cursor: pointer;
 }
 
@@ -1484,22 +1537,22 @@ body.is-resizing {
 
 .outline-glyph {
   display: inline-flex;
-  flex: 0 0 15px;
+  flex: 0 0 17px;
   justify-content: center;
   color: var(--si-link);
   font-family: var(--si-font-code);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .outline-kind {
   color: var(--si-muted);
-  font-size: 8.5px;
+  font-size: 10.5px;
 }
 
 .outline-section-title {
   margin: 12px 0 5px;
   color: var(--si-muted);
-  font-size: 8.5px;
+  font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1523,7 +1576,7 @@ body.is-resizing {
   border-radius: 5px;
   background: color-mix(in srgb, var(--si-warning) 5%, transparent);
   color: color-mix(in srgb, var(--si-warning) 82%, var(--si-fg));
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .warnings summary {
@@ -1544,7 +1597,7 @@ body.is-resizing {
 
 .pane-footer {
   display: flex;
-  flex: 0 0 23px;
+  flex: 0 0 28px;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -1552,7 +1605,7 @@ body.is-resizing {
   border-top: 1px solid var(--si-line);
   background: color-mix(in srgb, var(--si-bg) 96%, var(--si-fg) 2%);
   color: var(--si-muted);
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .footer-summary {
@@ -1572,11 +1625,11 @@ body.is-resizing {
 }
 
 .text-button {
-  height: 19px;
-  padding: 0 4px;
-  border-radius: 3px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 4px;
   color: var(--si-muted);
-  font-size: 9.5px;
+  font-size: 11.5px;
 }
 
 .text-button:hover {
@@ -1634,14 +1687,14 @@ body.is-resizing {
 .empty-title {
   margin-bottom: 5px;
   color: var(--si-fg);
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .empty-copy {
-  max-width: 520px;
+  max-width: 560px;
   color: var(--si-muted);
-  font-size: 11px;
+  font-size: 12.5px;
   line-height: 1.65;
 }
 
@@ -1667,10 +1720,10 @@ body.is-resizing {
 
 .primary-button,
 .secondary-button {
-  height: 27px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 14px;
   border-radius: 4px;
-  font-size: 10.5px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -1741,11 +1794,11 @@ body.is-resizing {
 
 .node-menu-title {
   overflow: hidden;
-  padding: 4px 7px 5px;
+  padding: 5px 8px 6px;
   border-bottom: 1px solid var(--si-line);
   color: var(--si-muted);
   font-family: var(--si-font-code);
-  font-size: 9.5px;
+  font-size: 11.5px;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -1759,14 +1812,14 @@ body.is-resizing {
   align-items: center;
   gap: 7px;
   width: 100%;
-  height: 24px;
-  padding: 0 8px;
+  height: 29px;
+  padding: 0 9px;
   border: 0;
   border-radius: 3px;
   color: var(--vscode-menu-foreground, var(--si-fg));
   background: transparent;
   font-family: var(--si-font-ui);
-  font-size: 10.5px;
+  font-size: 12px;
   text-align: left;
   cursor: pointer;
 }
@@ -1779,11 +1832,11 @@ body.is-resizing {
 
 .menu-icon {
   display: inline-flex;
-  flex: 0 0 14px;
+  flex: 0 0 16px;
   justify-content: center;
   color: var(--si-link);
   font-family: var(--si-font-code);
-  font-size: 10px;
+  font-size: 11.5px;
 }
 
 .menu-item:hover .menu-icon,
@@ -1811,7 +1864,7 @@ body.is-resizing {
   color: var(--si-fg);
   background: var(--vscode-notifications-background, var(--si-card-strong));
   box-shadow: 0 5px 22px rgba(0, 0, 0, 0.28);
-  font-size: 10.5px;
+  font-size: 12px;
   opacity: 0;
   transform: translateY(5px);
   transition: opacity 140ms ease, transform 140ms ease;
@@ -1876,12 +1929,12 @@ body.is-resizing {
   }
 
   .node-card {
-    flex-basis: 190px;
-    max-width: 230px;
+    flex-basis: 214px;
+    max-width: 280px;
   }
 
   .root-card {
-    width: 210px;
+    width: 230px;
   }
 }
 

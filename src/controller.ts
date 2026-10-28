@@ -37,6 +37,8 @@ import {
 } from './symbolService';
 import { getWebviewHtml } from './webview';
 import { fileNameFromUri } from './core';
+import { ProjectIndex, type CSearchResult } from './projectIndex';
+import type { SearchOptions } from './cParser';
 
 const VIEW_ID = 'sourceInsight.contextRelation';
 const MAX_DEPTH = 6;
@@ -69,6 +71,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   private lastAnalysisKey = '';
   private lastEditor: vscode.TextEditor | undefined;
   private suppressFollowUntil = 0;
+  private searchActive = false;
 
   private followCursor: boolean;
   private autoReveal: boolean;
@@ -92,6 +95,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   private relationHistoryIndex = -1;
 
   private state: PanelState;
+  private readonly projectIndex: ProjectIndex;
   private readonly service: SymbolService;
   private readonly builder: RelationBuilder;
   private readonly log: vscode.OutputChannel;
@@ -112,9 +116,13 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
     }];
 
     this.log = vscode.window.createOutputChannel('Source Insight');
+    this.projectIndex = new ProjectIndex(
+      (message) => this.log.appendLine(`[${new Date().toISOString()}] ${message}`),
+    );
     this.service = new SymbolService(
       (message) => this.log.appendLine(`[${new Date().toISOString()}] ${message}`),
       readConfig,
+      this.projectIndex,
     );
     this.builder = new RelationBuilder(this.service, readConfig);
     this.state = this.emptyState();
@@ -145,6 +153,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
       this.statusContext,
       this.statusRelation,
       this.log,
+      this.projectIndex,
       vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor) {
           this.lastEditor = editor;
@@ -274,6 +283,235 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
       this.service.clearCaches();
       this.scheduleAnalysis(true);
     }
+  }
+
+  async startBackgroundIndex(): Promise<void> {
+    const configuration = vscode.workspace.getConfiguration('sourceInsight');
+    if (configuration.get<boolean>('indexOnStartup') === false) {
+      return;
+    }
+    setTimeout(() => {
+      void this.projectIndex.ensureIndexed().catch((error: unknown) => {
+        this.log.appendLine(`Background index failed: ${String(error)}`);
+      });
+    }, 1500);
+  }
+
+  async rebuildIndex(): Promise<void> {
+    await this.openPanel(undefined, false);
+    const started = Date.now();
+    await this.projectIndex.rebuild();
+    this.service.clearCaches();
+    const stats = this.projectIndex.stats();
+    vscode.window.setStatusBarMessage(
+      `Source Insight: 已索引 ${stats.files} 个文件 / ${stats.declarations} 个声明（${Date.now() - started}ms）`,
+      5000,
+    );
+    this.searchActive = false;
+    if (this.viewVisible && this.followCursor && this.trackingMode !== 'off') {
+      this.scheduleAnalysis(true);
+    }
+  }
+
+  async searchProject(): Promise<void> {
+    const pattern = await vscode.window.showInputBox({
+      prompt: 'Source Insight 工程搜索（支持正则表达式）',
+      placeHolder: '例如 APP_Model_.* 、^\\s*#define\\s+TRUE 、p->state',
+      ignoreFocusOut: true,
+    });
+    if (pattern === undefined) {
+      return;
+    }
+    if (!pattern.trim()) {
+      this.showTransientError('搜索内容为空。');
+      return;
+    }
+    const choice = await vscode.window.showQuickPick([
+      { label: '普通文本（忽略大小写）', id: 'text' },
+      { label: '正则表达式', id: 'regex', description: 'JavaScript RegExp 语法' },
+      { label: '整词匹配', id: 'word', description: '普通文本 + \\b 边界' },
+      { label: '区分大小写的正则', id: 'regex-case', description: '正则表达式 + 大小写敏感' },
+    ], { placeHolder: '搜索方式' });
+    if (!choice) {
+      return;
+    }
+    const options: SearchOptions = {
+      regex: choice.id === 'regex' || choice.id === 'regex-case',
+      caseSensitive: choice.id === 'regex-case',
+      wholeWord: choice.id === 'word',
+    };
+    await this.runProjectSearch(pattern, options);
+  }
+
+  async runProjectSearch(pattern: string, options: SearchOptions): Promise<void> {
+    if (!this.view) {
+      await this.openPanel(undefined, false);
+    }
+    let result: CSearchResult;
+    try {
+      result = await this.projectIndex.search(pattern, options);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.showTransientError(`正则表达式无效：${message}`);
+      return;
+    }
+    this.analysisRevision += 1;
+    this.searchActive = true;
+    this.rootSymbol = undefined;
+    this.matches = [];
+    this.matchSymbols = [];
+    this.relationTree = this.buildSearchTree(pattern, result);
+    this.relationMode = 'references';
+    this.relationDepth = 1;
+    this.syncActiveTab();
+    this.relationHistory = [];
+    this.relationHistoryIndex = -1;
+    this.state = {
+      ...this.state,
+      revision: this.analysisRevision,
+      status: 'ready',
+      loading: false,
+      ...this.panelStateFields(),
+      updatedAt: Date.now(),
+    };
+    this.updateStatusBar();
+    this.postState();
+    vscode.window.setStatusBarMessage(
+      `Source Insight: “${pattern}” 匹配 ${result.total} 处${result.truncated ? '（已截断）' : ''}`,
+      4000,
+    );
+  }
+
+  private buildSearchTree(pattern: string, result: CSearchResult): HostRelationTree {
+    const nodeMap = new Map<string, HostNode>();
+    const first = result.matches[0];
+    const rootLocation: SourceLocation = first
+      ? {
+          uri: first.uri,
+          startLine: first.line,
+          startCharacter: first.character,
+          endLine: first.line,
+          endCharacter: first.endCharacter,
+        }
+      : {
+          uri: this.lastEditor?.document.uri.toString()
+            ?? vscode.workspace.workspaceFolders?.[0]?.uri.toString()
+            ?? '',
+          startLine: 0,
+          startCharacter: 0,
+          endLine: 0,
+          endCharacter: 0,
+        };
+    const root: HostNode = {
+      id: 'search-root',
+      role: 'definition',
+      name: pattern,
+      kindLabel: '搜索结果',
+      openLocation: rootLocation,
+      count: 1,
+      readCount: 0,
+      writeCount: 0,
+      sites: [],
+      children: [],
+      expandable: false,
+      cycle: false,
+      tags: [`${result.total} 处`],
+      depth: 0,
+    };
+    nodeMap.set(root.id, root);
+
+    const groups = new Map<string, { fileName: string; matches: CSearchResult['matches'] }>();
+    for (const match of result.matches) {
+      const group = groups.get(match.uri);
+      if (group) {
+        group.matches.push(match);
+      } else {
+        groups.set(match.uri, { fileName: match.fileName, matches: [match] });
+      }
+    }
+    const fileNodes: HostNode[] = [];
+    let fileIndex = 0;
+    for (const [uri, group] of groups) {
+      const firstMatch = group.matches[0];
+      const fileNode: HostNode = {
+        id: `search-f${fileIndex}`,
+        role: 'member',
+        name: group.fileName,
+        kindLabel: `${group.matches.length} 处`,
+        openLocation: {
+          uri,
+          startLine: firstMatch.line,
+          startCharacter: firstMatch.character,
+          endLine: firstMatch.line,
+          endCharacter: firstMatch.endCharacter,
+        },
+        count: group.matches.length,
+        readCount: 0,
+        writeCount: 0,
+        sites: [],
+        children: [],
+        expandable: true,
+        cycle: false,
+        depth: 1,
+        parent: root,
+      };
+      nodeMap.set(fileNode.id, fileNode);
+      let matchIndex = 0;
+      for (const match of group.matches) {
+        const location: SourceLocation = {
+          uri: match.uri,
+          startLine: match.line,
+          startCharacter: match.character,
+          endLine: match.line,
+          endCharacter: match.endCharacter,
+        };
+        const text = match.text.length > 96 ? `${match.text.slice(0, 95)}…` : match.text;
+        const matchNode: HostNode = {
+          id: `search-f${fileIndex}-${matchIndex}`,
+          role: 'reference',
+          name: text,
+          kindLabel: `L${match.line + 1}`,
+          openLocation: location,
+          count: 1,
+          readCount: 0,
+          writeCount: 0,
+          sites: [{ location, role: 'reference' }],
+          children: [],
+          expandable: false,
+          cycle: false,
+          depth: 2,
+          parent: fileNode,
+        };
+        nodeMap.set(matchNode.id, matchNode);
+        fileNode.children.push(matchNode);
+        matchIndex += 1;
+      }
+      fileNodes.push(fileNode);
+      fileIndex += 1;
+    }
+    root.children = fileNodes;
+    const warnings = result.total === 0
+      ? ['未找到匹配项。']
+      : result.truncated
+        ? ['匹配结果超过上限，已截断。']
+        : [];
+    return {
+      root,
+      left: [],
+      right: fileNodes,
+      counts: {
+        callers: 0,
+        callees: 0,
+        references: result.total,
+        members: fileNodes.length,
+        total: nodeMap.size,
+      },
+      warnings,
+      nodeMap,
+      mode: 'references',
+      depth: 1,
+      totalNodes: nodeMap.size,
+    };
   }
 
   async cycleLayout(): Promise<void> {
@@ -486,6 +724,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   }
 
   async clear(): Promise<void> {
+    this.searchActive = false;
     this.analysisRevision += 1;
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
@@ -539,6 +778,9 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   }
 
   private onEditorMoved(): void {
+    if (this.searchActive) {
+      return;
+    }
     if (!this.followCursor || this.trackingMode === 'off' || Date.now() < this.suppressFollowUntil) {
       return;
     }
@@ -582,6 +824,9 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   }
 
   private async runAnalysis(manual: boolean): Promise<void> {
+    if (manual) {
+      this.searchActive = false;
+    }
     const editor = this.activeEditor();
     if (!editor || !this.isSupportedDocument(editor.document)) {
       return;
@@ -798,6 +1043,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
     symbol: HostSymbol,
     mode: RelationMode,
   ): Promise<void> {
+    this.searchActive = false;
     const revision = ++this.analysisRevision;
     const stale = () => revision !== this.analysisRevision;
     await this.service.decorateDeclaration(symbol, stale).catch(() => undefined);
@@ -898,6 +1144,15 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
         this.service.clearCaches();
         await this.runAnalysis(true);
         break;
+      case 'searchProject':
+        await this.searchProject();
+        break;
+      case 'rebuildIndex':
+        await this.rebuildIndex();
+        break;
+      case 'openSettings':
+        await vscode.commands.executeCommand('sourceInsight.openSettings');
+        break;
       case 'toggleFollow':
         await this.toggleFollow();
         break;
@@ -959,7 +1214,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
         true,
         {
           location: site.location,
-          targetName: root.name,
+          targetName: node.siteName ?? root.name,
           targetLocation: site.location,
         },
       );
@@ -1027,6 +1282,9 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
       showType: 'type',
       showContains: 'contains',
       showDerived: 'derived',
+      showInstances: 'instances',
+      showMemberAccess: 'memberAccess',
+      showDeclarations: 'declarations',
       setRoot: defaultModeFor(node.symbol),
     };
     const mode = map[action] ?? defaultModeFor(node.symbol);
@@ -1063,6 +1321,7 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   }
 
   private async selectMatch(index: number): Promise<void> {
+    this.searchActive = false;
     const symbol = this.matchSymbols[index];
     if (!symbol || !this.rootSymbol) {
       return;
@@ -1290,6 +1549,10 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   private relationTabsView(): RelationTabView[] {
     const labels = this.relationTabs.map((tab) => {
       const tree = tab.tree;
+      if (tree?.root.kindLabel === '搜索结果') {
+        const pattern = tree.root.name;
+        return `搜索: ${pattern.length > 18 ? `${pattern.slice(0, 17)}…` : pattern}`;
+      }
       if (tree && this.rootSymbol && tree.root.name !== this.rootSymbol.name) {
         return tree.root.name;
       }
@@ -1357,10 +1620,13 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   }
 
   private toRelationView(tree: HostRelationTree): RelationView {
-    const relationRoot = tree.root.symbol ?? this.rootSymbol;
-    const available = relationRoot
-      ? availableModesFor(relationRoot)
-      : [{ value: tree.mode, label: '引用' }];
+    const isSearch = tree.root.kindLabel === '搜索结果';
+    const relationRoot = tree.root.symbol ?? (isSearch ? undefined : this.rootSymbol);
+    const available = isSearch
+      ? [{ value: 'references' as const, label: '搜索' }]
+      : relationRoot
+        ? availableModesFor(relationRoot)
+        : [{ value: tree.mode, label: '引用' }];
     const config = readConfig();
     return {
       root: this.toNodeView(tree.root),
@@ -1368,7 +1634,9 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
       left: tree.left.map((node) => this.toNodeView(node)),
       right: tree.right.map((node) => this.toNodeView(node)),
       mode: tree.mode,
-      modeLabel: available.find((entry) => entry.value === tree.mode)?.label ?? '关系',
+      modeLabel: isSearch
+        ? '搜索结果'
+        : available.find((entry) => entry.value === tree.mode)?.label ?? '关系',
       availableModes: available,
       depth: tree.depth,
       maxDepth: MAX_DEPTH,
@@ -1413,6 +1681,8 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
       isFunction: node.symbol?.isFunction,
       isContainer: node.symbol?.isContainer,
       isVariable: node.symbol?.isVariable,
+      tags: node.tags && node.tags.length > 0 ? node.tags : undefined,
+      hasSymbol: Boolean(node.symbol),
       locationLabel: node.locationLabel,
       children: node.children.map((child) => this.toNodeView(child)),
     };
@@ -1490,6 +1760,13 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
       this.statusContext.tooltip = 'Source Insight Context 窗口';
     }
 
+    if (this.searchActive && this.relationTree) {
+      const pattern = this.relationTree.root.name;
+      const short = pattern.length > 24 ? `${pattern.slice(0, 23)}…` : pattern;
+      this.statusRelation.text = `$(search) 搜索 ${this.relationTree.counts.references} 处`;
+      this.statusRelation.tooltip = `工程搜索：${short}`;
+      return;
+    }
     if (this.relationTree) {
       const root = this.relationTree.root;
       const counts = this.relationTree.counts;

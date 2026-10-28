@@ -11,6 +11,9 @@
     providerState: $('provider-state'),
     trackingState: $('tracking-state'),
     followButton: $('follow-button'),
+    searchButton: $('search-button'),
+    indexButton: $('index-button'),
+    settingsButton: $('settings-button'),
     refreshButton: $('refresh-button'),
     split: $('split'),
     contextPane: $('context-pane'),
@@ -477,6 +480,15 @@
     if (relation.mode === 'contains') {
       return `成员 ${relation.counts.members} · 节点 ${relation.totalNodes}`;
     }
+    if (relation.mode === 'instances') {
+      return `变量实例 ${relation.counts.instances || 0} · 节点 ${relation.totalNodes}`;
+    }
+    if (relation.mode === 'memberAccess') {
+      return `成员访问 ${relation.counts.members} · 节点 ${relation.totalNodes}`;
+    }
+    if (relation.mode === 'declarations') {
+      return `声明/定义 ${relation.counts.declarations || 0} · 节点 ${relation.totalNodes}`;
+    }
     if (relation.mode === 'type') {
       return `类型关系 · 节点 ${relation.totalNodes}`;
     }
@@ -628,11 +640,17 @@
   }
 
   function rootCard(root) {
+    const tags = Array.isArray(root.tags)
+      ? root.tags
+        .filter((tag) => tag !== '声明' && tag !== '定义')
+        .map((tag) => `<span class="tag-badge">${escapeHtml(tag)}</span>`)
+        .join('')
+      : '';
     return (
       `<div class="root-card" data-node-id="${escapeAttr(root.id)}" tabindex="0" role="button" title="${escapeAttr(root.name)}">` +
-        '<div class="root-eyebrow"><span class="root-role">定义</span></div>' +
+        `<div class="root-eyebrow"><span class="root-role">${root.kindLabel === '搜索结果' ? '搜索' : '定义'}</span></div>` +
         `<div class="root-name">${nodeGlyph(root)}<span>${escapeHtml(root.name)}</span></div>` +
-        `<div class="root-kind">${escapeHtml(root.kindLabel)}</div>` +
+        `<div class="root-kind">${escapeHtml(root.kindLabel)}${tags ? `<span class="root-tags">${tags}</span>` : ''}</div>` +
       '</div>'
     );
   }
@@ -691,7 +709,9 @@
           ? '读'
           : site.role === 'write'
             ? '写'
-            : '引用';
+            : site.role === 'address'
+              ? '取址'
+              : '引用';
       return `<button class="node-site role-${escapeAttr(site.role)}" type="button" data-site-node-id="${escapeAttr(node.id)}" data-site-index="${index}" title="在 Context 中查看第 ${site.line} 行">` +
         `<span class="node-site-label">Line</span><span class="node-site-line">${site.line}</span><span class="node-site-role">${role}</span>` +
         '</button>';
@@ -709,14 +729,36 @@
     if (node.role === 'type') {
       return 'T';
     }
+    if (node.role === 'instance') {
+      return (node.tags || []).some((tag) => tag.indexOf('指针') >= 0) ? '*' : 'S';
+    }
     if (node.role === 'member') {
       return '·';
+    }
+    const kind = node.kindLabel || '';
+    if (kind.indexOf('函数式宏') >= 0 || kind.indexOf('宏') >= 0) {
+      return 'M';
+    }
+    if (kind.indexOf('结构体') >= 0) {
+      return 'S';
+    }
+    if (kind.indexOf('联合体') >= 0) {
+      return 'U';
+    }
+    if (kind.indexOf('枚举') >= 0) {
+      return 'E';
+    }
+    if (kind.indexOf('别名') >= 0) {
+      return 't';
+    }
+    if (kind.indexOf('汇编标签') >= 0) {
+      return '@';
     }
     if (node.isFunction) {
       return 'ƒ';
     }
     if (node.isVariable) {
-      return 'v';
+      return (node.tags || []).some((tag) => tag.indexOf('指针') >= 0) ? '*' : 'v';
     }
     return '·';
   }
@@ -737,6 +779,14 @@
     }
     if (!compact && node.role === 'declaration') {
       parts.push('<span class="mini-badge">声明</span>');
+    }
+    if (Array.isArray(node.tags)) {
+      for (const tag of node.tags) {
+        if (tag === '声明' || tag === '定义') {
+          continue;
+        }
+        parts.push(`<span class="tag-badge">${escapeHtml(tag)}</span>`);
+      }
     }
     if (parts.length === 0) {
       return '';
@@ -899,30 +949,54 @@
     const addExpand = (levels, label) => {
       items.push(`<button class="menu-item" type="button" data-menu-expand="${levels}" role="menuitem"><span class="menu-icon">+</span><span>${label}</span></button>`);
     };
-    if (node.isFunction) {
-      add('showCallers', '查看调用者', '←');
-      add('showCallees', '查看被调用', '→');
-      add('showReferences', '查看引用', '↗');
-    } else if (node.isContainer) {
-      add('showContains', '查看成员', '≡');
-      add('showDerived', '查看派生', '↳');
-      add('showReferences', '查看引用', '↗');
-    } else if (node.isVariable) {
-      add('showReferences', '查看引用', '↗');
-      add('showType', '查看类型', 'T');
-    } else {
-      add('showReferences', '查看引用', '↗');
-    }
-    if (node.id !== 'root') {
-      items.push('<div class="menu-separator"></div>');
-      add('setRoot', '设为根节点', '◆');
-      add('revealInContext', '在 Context 中查看', '▤');
-    }
-    if (node.expandable || node.children.length > 0) {
-      items.push('<div class="menu-separator"></div>');
-      addExpand(1, '展开一层');
-      addExpand(2, '展开两层');
-      addExpand(3, '展开三层');
+    const kind = node.kindLabel || '';
+    const hasSymbol = node.hasSymbol !== false;
+    if (hasSymbol) {
+      if (node.isFunction) {
+        add('showCallers', '查看调用者', '←');
+        add('showCallees', '查看被调用', '→');
+        add('showReferences', '查看引用', '↗');
+        add('showDeclarations', '查看声明/定义', '◇');
+      } else if (kind.indexOf('宏') >= 0) {
+        add('showReferences', '查看宏引用', '↗');
+        add('showDeclarations', '查看宏定义', '◇');
+      } else if (kind.indexOf('汇编标签') >= 0) {
+        add('showCallers', '查看调用者', '←');
+        add('showCallees', '查看被调用', '→');
+        add('showReferences', '查看引用', '↗');
+      } else if (node.isContainer) {
+        add('showContains', '查看成员', '≡');
+        if (kind.indexOf('枚举') < 0) {
+          add('showInstances', '查看变量实例', 'v');
+        }
+        add('showDerived', '查看类型别名', '↳');
+        add('showReferences', '查看引用', '↗');
+        add('showDeclarations', '查看声明/定义', '◇');
+      } else if (kind.indexOf('别名') >= 0) {
+        add('showType', '查看目标类型', 'T');
+        add('showContains', '查看成员', '≡');
+        add('showInstances', '查看变量实例', 'v');
+        add('showReferences', '查看引用', '↗');
+      } else if (node.isVariable) {
+        add('showReferences', '查看引用', '↗');
+        add('showType', '查看类型', 'T');
+        add('showMemberAccess', '查看成员访问', '.');
+        add('showContains', '查看类型成员', '≡');
+        add('showDeclarations', '查看声明/定义', '◇');
+      } else {
+        add('showReferences', '查看引用', '↗');
+      }
+      if (node.id !== 'root') {
+        items.push('<div class="menu-separator"></div>');
+        add('setRoot', '设为根节点', '◆');
+        add('revealInContext', '在 Context 中查看', '▤');
+      }
+      if (node.expandable || node.children.length > 0) {
+        items.push('<div class="menu-separator"></div>');
+        addExpand(1, '展开一层');
+        addExpand(2, '展开两层');
+        addExpand(3, '展开三层');
+      }
     }
     items.push('<div class="menu-separator"></div>');
     add('open', '打开定义', '↗');
@@ -1232,6 +1306,9 @@
   /* ------------------------------------------------------------- events */
 
   els.refreshButton.addEventListener('click', () => post({ type: 'refresh' }));
+  els.searchButton.addEventListener('click', () => post({ type: 'searchProject' }));
+  els.indexButton.addEventListener('click', () => post({ type: 'rebuildIndex' }));
+  els.settingsButton.addEventListener('click', () => post({ type: 'openSettings' }));
   els.relationRefreshButton.addEventListener('click', () => post({ type: 'refresh' }));
   els.newRelationTab.addEventListener('click', () => post({ type: 'newRelationTab' }));
   els.relationTabList.addEventListener('click', (event) => {

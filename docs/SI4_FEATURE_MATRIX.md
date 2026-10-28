@@ -13,7 +13,7 @@
 | 关闭自动跟踪 / 锁定窗口 | 已实现 | `trackingMode = off`；Context 独立锁定按钮 |
 | 显示函数定义、变量声明 | 已实现 | 定义/声明切换；声明缺失时回退定义 |
 | 多个同名定义时导航全部匹配 | 已实现 | Context 顶部 `‹ 1 / N ›` 匹配导航 |
-| 变量基类型解码（struct/union/class/typedef） | 已实现 | Type Definition Provider + 声明行类型名回退 |
+| 变量基类型解码（struct/union/class/typedef） | 已实现 | 内置索引解析 typedef/struct 链；未收录时回退 Type Definition Provider |
 | 在 Context 中预览 Relation 节点 | 已实现 | 单击 Relation 节点触发；Context 锁定时不更新 |
 | 从文件列表/工程符号列表预览 | 不适用 | VS Code 的 Explorer / 符号列表无对应事件 API；由编辑器标签替代 |
 | 锁定 Context | 已实现 | 面板锁按钮、命令 |
@@ -32,8 +32,12 @@
 | Calls and Callers（双向） | 已实现 | 左侧调用者、右侧被调用 |
 | Contains（结构/类成员） | 已实现 | 结构体/类/命名空间子符号 |
 | Type of（变量类型） | 已实现 | 变量默认可选“类型”关系；结构体成员可继续展开 |
-| Derived / Implementation | 已实现 | `derived` 关系，依赖 Implementation Provider |
-| 按符号类型选择默认关系 | 已实现 | 函数 Callers、变量 References、容器 Contains |
+| Derived / Implementation | 已实现 | C 中显示为“类型别名”；C++ 依赖 Implementation Provider |
+| 宏引用 / 函数式宏调用 | 已实现 | 内置索引识别 `#define` 对象宏与函数式宏 |
+| 结构体值实例 / 指针实例 | 已实现 | `instances` 关系，节点标记值实例/指针实例 |
+| 成员访问 `.` / `->` | 已实现 | `memberAccess` 关系，字段节点区分值访问/指针访问 |
+| 声明与定义分离 | 已实现 | 原型 / extern / 前置声明与定义分别成节点 |
+| 按符号类型选择默认关系 | 已实现 | 函数/汇编标签 Callers、宏 References、变量 References、结构/枚举 Contains、typedef 目标类型 |
 | 自动展开 Levels 1–6 | 已实现 | 工具栏 `− / +`、`sourceInsight.defaultDepth` |
 | 防止循环展开 | 已实现 | 祖先链检测，节点标“循环” |
 | 重复分支展开/折叠 | 已实现 | `sourceInsight.expandDuplicateBranches` |
@@ -67,10 +71,20 @@
 | Print Relation Window | 不适用 | 使用 VS Code/系统打印；未单独实现 |
 | Touch All Files in Relation | 不适用 | VS Code 无 Source Insight 式工程文件时间戳管理 |
 
+## 工程搜索
+
+| Source Insight 4 功能 | 本插件状态 | 说明 |
+| --- | --- | --- |
+| Search Project（普通文本） | 已实现 | 顶部搜索按钮 / 命令 |
+| 正则表达式搜索 | 已实现 | JavaScript RegExp；支持区分大小写 |
+| 整词匹配 | 已实现 | 普通文本 + `\b` |
+| 搜索结果文件/行树 | 已实现 | 结果显示在 Relation 窗口，双击跳转 |
+| 搜索结果替换 | 暂未实现 | 可在 VS Code 全局替换中完成 |
+
 ## 与 Source Insight 的显示差异
 
 Source Insight 的 Relation 列表可以显示文件、行号、代码片段和多种列。本插件按当前需求默认只显示**函数/变量/成员名称**，以保持图形树干净；需要文件位置时可在设置中打开 `sourceInsight.showLocations`。Context 顶部同样只显示符号名和类型，不显示文件路径。
 
 ## 依赖
 
-关系解析质量取决于已安装的 Language Server。C/C++ 推荐 `ms-vscode.cpptools` 或 clangd；没有语言服务时，插件只能进行词级回退，无法保证声明、引用和调用图准确。
+C / 头文件 / 汇编文件的全局符号、宏、typedef、结构体成员、声明/定义、成员访问和工程搜索由插件自带索引解析，不要求安装语言服务。语言服务（`ms-vscode.cpptools` / clangd）用于补足函数内局部变量、C++ 模板/类继承等索引未覆盖的场景。

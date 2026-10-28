@@ -2,7 +2,7 @@
   "name": "source-insight-context-relation",
   "displayName": "Source Insight Context & Relation",
   "description": "Source Insight 4 style Context and Relation windows for VS Code with call trees, configurable depth, callers/callees, locks, and symbol-only graph nodes.",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "publisher": "onepiece-tools",
   "license": "MIT",
   "engines": {
@@ -19,7 +19,11 @@
     "call tree",
     "references",
     "c",
-    "cpp"
+    "cpp",
+    "regex",
+    "assembly",
+    "macro",
+    "symbol index"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -144,6 +148,33 @@
         "category": "Source Insight"
       },
       {
+        "command": "sourceInsight.relationInstances",
+        "title": "Source Insight: Relation 显示变量实例（值/指针）",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.relationMemberAccess",
+        "title": "Source Insight: Relation 显示成员访问（. / ->）",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.relationDeclarations",
+        "title": "Source Insight: Relation 显示声明/定义",
+        "category": "Source Insight"
+      },
+      {
+        "command": "sourceInsight.searchProject",
+        "title": "Source Insight: 工程搜索（支持正则表达式）",
+        "category": "Source Insight",
+        "icon": "$(search)"
+      },
+      {
+        "command": "sourceInsight.rebuildIndex",
+        "title": "Source Insight: 重建 C 符号索引",
+        "category": "Source Insight",
+        "icon": "$(database)"
+      },
+      {
         "command": "sourceInsight.increaseDepth",
         "title": "Source Insight: 增加关系层级",
         "category": "Source Insight",
@@ -216,6 +247,21 @@
           "command": "sourceInsight.relationBoth"
         },
         {
+          "command": "sourceInsight.relationInstances"
+        },
+        {
+          "command": "sourceInsight.relationMemberAccess"
+        },
+        {
+          "command": "sourceInsight.relationDeclarations"
+        },
+        {
+          "command": "sourceInsight.searchProject"
+        },
+        {
+          "command": "sourceInsight.rebuildIndex"
+        },
+        {
           "command": "sourceInsight.increaseDepth"
         },
         {
@@ -243,23 +289,7 @@
           "command": "sourceInsight.openUserGuide"
         }
       ],
-      "view/title": [
-        {
-          "command": "sourceInsight.toggleFollow",
-          "when": "view == sourceInsight.contextRelation",
-          "group": "navigation@1"
-        },
-        {
-          "command": "sourceInsight.refresh",
-          "when": "view == sourceInsight.contextRelation",
-          "group": "navigation@2"
-        },
-        {
-          "command": "sourceInsight.openSettings",
-          "when": "view == sourceInsight.contextRelation",
-          "group": "navigation@3"
-        }
-      ]
+      "view/title": []
     },
     "keybindings": [
       {
@@ -416,6 +446,22 @@
           "type": "boolean",
           "default": true,
           "description": "调用点按文件路径、行号从上到下排序；关闭时保留语言服务器返回顺序。"
+        },
+        "sourceInsight.enableProjectIndex": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用插件自带的 C/汇编符号索引。关闭后 C 文件只解析当前打开的文件，其余仍回退到语言服务器。"
+        },
+        "sourceInsight.indexOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "打开工程后自动在后台建立 .c/.h/.s/.asm 符号索引（类似 Source Insight 的符号数据库）。"
+        },
+        "sourceInsight.maxIndexFileSize": {
+          "type": "number",
+          "default": 2097152,
+          "minimum": 65536,
+          "description": "单个文件超过该字节数时跳过索引，避免超大生成文件拖慢索引。"
         }
       }
     }
