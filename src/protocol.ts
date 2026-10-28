@@ -27,6 +27,9 @@ export interface ContextMatchView {
 export interface ContextView {
   symbolName: string;
   targetName: string;
+  /** File displayed by the context window. */
+  fileName: string;
+  filePath?: string;
   kindLabel: string;
   isFunction: boolean;
   languageId: string;

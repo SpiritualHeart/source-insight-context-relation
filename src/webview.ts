@@ -70,6 +70,7 @@ export function getWebviewHtml(
             <span class="pane-kicker">CONTEXT</span>
             <span class="pane-title" id="context-title">上下文</span>
             <span class="symbol-badge" id="kind-badge" hidden></span>
+            <span class="context-file" id="context-file" hidden></span>
           </div>
           <div class="pane-head-meta">
             <span class="match-nav" id="match-nav" hidden>

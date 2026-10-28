@@ -36,6 +36,7 @@ import {
   SymbolService,
 } from './symbolService';
 import { getWebviewHtml } from './webview';
+import { fileNameFromUri } from './core';
 
 const VIEW_ID = 'sourceInsight.contextRelation';
 const MAX_DEPTH = 6;
@@ -1322,9 +1323,12 @@ export class SourceInsightController implements vscode.WebviewViewProvider, vsco
   private toContextView(state: ContextPaneState): ContextView {
     const context = state.context;
     const config = readConfig();
+    const filePath = vscode.Uri.parse(context.fileUri).fsPath;
     return {
       symbolName: context.symbol.name,
       targetName: context.targetName,
+      fileName: fileNameFromUri(context.fileUri),
+      filePath,
       kindLabel: context.symbol.kindLabel,
       isFunction: context.symbol.isFunction,
       languageId: context.languageId,

@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import {
   chooseBestDefinition,
   classifyReference,
-  computeContextRange,
   dedupeLocations,
   isHeaderFile,
   locationKey,
@@ -738,31 +737,13 @@ export class SymbolService {
     const targetLocation = focus?.targetLocation ?? location;
     const targetName = focus?.targetName ?? displaySymbol.name;
     const aligned = alignLocationToWord(document, targetLocation, targetName);
-    const records = await this.getDocumentSymbols(document, isStale);
-    const position = new vscode.Position(aligned.startLine, aligned.startCharacter);
-    const record = focus
-      ? undefined
-      : findSymbolAt(records, position, displaySymbol.name)
-        ?? findContainerAt(records, position);
-    const config = this.getConfig();
-    const range = computeContextRange({
-      totalLines: document.lineCount,
-      targetStartLine: aligned.startLine,
-      targetEndLine: aligned.endLine,
-      symbolStartLine:
-        !focus && (displaySymbol.isFunction || displaySymbol.isContainer) && record
-          ? record.range.start.line
-          : undefined,
-      symbolEndLine:
-        !focus && (displaySymbol.isFunction || displaySymbol.isContainer) && record
-          ? record.range.end.line
-          : undefined,
-      contextLines: config.contextLines,
-      maxLines: config.maxContextLines,
-    });
-
+    // Source Insight-style context is a scrollable view of the whole file. The
+    // initial scroll position is the target line, but the user can freely
+    // scroll to any other line in the same file.
+    const startLine = 0;
+    const endLine = Math.max(0, document.lineCount - 1);
     const lines: ContextLine[] = [];
-    for (let line = range.startLine; line <= range.endLine; line += 1) {
+    for (let line = startLine; line <= endLine; line += 1) {
       const text = safeLineText(document, line);
       lines.push({
         line,
@@ -782,19 +763,20 @@ export class SymbolService {
       symbol,
       targetName,
       focusLocation: focus?.location,
+      fileUri: location.uri,
       matches,
       activeMatch,
       activeView: availableViews.includes(view) ? view : 'definition',
       availableViews,
       lines,
-      startLine: range.startLine,
-      endLine: range.endLine,
+      startLine,
+      endLine,
       targetStartLine: aligned.startLine,
       targetEndLine: aligned.endLine,
       targetStartCharacter: aligned.startCharacter,
       targetEndCharacter: aligned.endCharacter,
-      truncatedTop: range.truncatedTop,
-      truncatedBottom: range.truncatedBottom,
+      truncatedTop: false,
+      truncatedBottom: false,
       totalLines: document.lineCount,
       languageId: document.languageId,
       typeSymbol,

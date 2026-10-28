@@ -471,6 +471,16 @@ button:disabled {
   background: color-mix(in srgb, var(--si-fg) 5%, transparent);
 }
 
+.context-file {
+  overflow: hidden;
+  max-width: 220px;
+  color: var(--si-muted);
+  font-family: var(--si-font-code);
+  font-size: 9px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .match-nav {
   display: inline-flex;
   align-items: center;

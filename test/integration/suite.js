@@ -266,6 +266,7 @@ async function run() {
 
     const state = payload.state;
     assert.equal(state.context.symbolName, NAME);
+    assert.equal(state.context.fileName, 'APP_Model.c', 'Context must expose its source file name');
     assert.equal(state.context.isFunction, true);
     assert.ok(payload.debug, 'Test debug payload should be present');
     assert.equal(payload.debug.name, NAME);
@@ -284,7 +285,7 @@ async function run() {
     assert.ok(state.relation.counts.callers >= 2, 'Callers should be classified');
     assert.equal(state.context.targetStartLine, 4);
     assert.ok(state.context.lines.length >= 5, 'Context should include the function body');
-    assert.equal(state.context.lines[0].line, 3, 'Context should start one line before the definition');
+    assert.equal(state.context.lines[0].line, 0, 'Context should expose the whole file for free scrolling');
 
     const referencesByLabel = new Map(
       state.relation.right.map((reference) => [reference.name, reference]),

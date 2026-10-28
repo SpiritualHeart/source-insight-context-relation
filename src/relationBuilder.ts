@@ -1,4 +1,4 @@
-import { fileNameFromUri } from './core';
+import { fileNameFromUri, normalizeUriForComparison } from './core';
 import type {
   RelationCounts,
   RelationMode,
@@ -690,12 +690,18 @@ interface ReferenceGroup {
 function groupReferences(references: HostReference[]): ReferenceGroup[] {
   const groups = new Map<string, ReferenceGroup>();
   for (const reference of references) {
-    // Header declarations and source definitions can be different DocumentSymbol
-    // records with the same function name. Group by logical symbol name/kind so
-    // repeated use inside one function becomes one node with multiple line sites.
-    const key = reference.caller
-      ? `${reference.caller.isFunction ? 'function' : 'symbol'}:${reference.caller.name}`
-      : 'global';
+    // A reference with no enclosing function/variable has no real Source
+    // Insight relation owner. Do not invent a synthetic "global" node.
+    if (!reference.caller) {
+      continue;
+    }
+    // Do not merge same-named functions/variables from different files. Header
+    // and source records for the same file still stay together.
+    const key = [
+      normalizeUriForComparison(reference.caller.definition.uri),
+      reference.caller.isFunction ? 'function' : 'symbol',
+      reference.caller.name,
+    ].join('|');
     let group = groups.get(key);
     if (!group) {
       group = {
@@ -735,9 +741,14 @@ function groupReferences(references: HostReference[]): ReferenceGroup[] {
     });
   }
   return [...groups.values()].sort((a, b) => {
-    const nameA = a.caller?.name ?? '全局';
-    const nameB = b.caller?.name ?? '全局';
-    return nameA.localeCompare(nameB);
+    const nameA = a.caller?.name ?? '';
+    const nameB = b.caller?.name ?? '';
+    const byName = nameA.localeCompare(nameB);
+    if (byName !== 0) {
+      return byName;
+    }
+    return normalizeUriForComparison(a.caller?.definition.uri ?? '')
+      .localeCompare(normalizeUriForComparison(b.caller?.definition.uri ?? ''));
   });
 }
 

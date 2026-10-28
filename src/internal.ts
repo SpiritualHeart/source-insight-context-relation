@@ -89,6 +89,8 @@ export interface ContextFocus {
 export interface HostContext {
   symbol: HostSymbol;
   targetName: string;
+  /** Actual document shown by the context window. */
+  fileUri: string;
   /** Set when the context was opened from a relation use/call site. */
   focusLocation?: SourceLocation;
   matches: ContextMatchView[];

@@ -17,6 +17,7 @@
     relationPane: $('relation-pane'),
     splitter: $('splitter'),
     contextTitle: $('context-title'),
+    contextFile: $('context-file'),
     kindBadge: $('kind-badge'),
     matchNav: $('match-nav'),
     matchLabel: $('match-label'),
@@ -244,6 +245,9 @@
   function renderContext(context) {
     els.contextTitle.textContent = context.symbolName;
     els.contextTitle.title = context.symbolName;
+    els.contextFile.hidden = !context.fileName;
+    els.contextFile.textContent = context.fileName || '';
+    els.contextFile.title = context.filePath || context.fileName || '';
     els.kindBadge.hidden = false;
     els.kindBadge.textContent = context.kindLabel;
     els.contextFooter.hidden = false;
