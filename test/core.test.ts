@@ -16,7 +16,6 @@ import {
 } from '../src/core';
 
 import {
-  buildSearchRegExp,
   classifyVariableUse,
   parseSourceFile,
 } from '../src/cParser';
@@ -451,6 +450,43 @@ test('struct pointers and struct-returning functions keep the struct type', () =
   assert.equal(getter.typeText, 'struct Data');
 });
 
+test('ISR macro function definitions own their body references', () => {
+  const text = [
+    'IRQ_HANDLER(SPC5_PIT0_HANDLER)',
+    '{',
+    '    extern void TimerHandler(void);',
+    '    PIT.CH[0].TFLG.R = 1;',
+    '    TimerHandler();',
+    '}',
+    '',
+    'void TimerHandler(void)',
+    '{',
+    '}',
+  ].join('\n');
+  const model = parseSourceFile('file:///demo/isr.c', 'D:/demo/isr.c', text);
+  const isr = model.decls.find((decl) => decl.name === 'SPC5_PIT0_HANDLER');
+  assert.ok(isr, 'Expected the ISR macro definition to create a function symbol');
+  assert.equal(isr.kind, 'function');
+  assert.equal(isr.displayName, 'IRQ_HANDLER');
+  assert.equal(isr.isDefinition, true);
+  assert.equal(isr.bodyStartLine, 1);
+  assert.equal(isr.bodyEndLine, 5);
+
+  const call = model.calls.find((entry) => entry.name === 'TimerHandler');
+  assert.ok(call);
+  assert.equal(call.line, 4);
+
+  const owner = model.owners.find((entry) => entry.name === 'SPC5_PIT0_HANDLER');
+  assert.ok(owner);
+  assert.equal(owner.kind, 'function');
+  assert.equal(owner.startLine, 0);
+  assert.equal(owner.endLine, 5);
+
+  const definition = model.decls.find((decl) => decl.name === 'TimerHandler' && decl.isDefinition);
+  assert.ok(definition);
+  assert.equal(definition.kind, 'function');
+});
+
 test('assembly parser records labels and call targets', () => {
   const text = [
     '    .global main',
@@ -467,16 +503,6 @@ test('assembly parser records labels and call targets', () => {
   const calls = model.asmRefs.filter((entry) => entry.kind === 'call').map((entry) => entry.name);
   assert.ok(calls.includes('helper'));
   assert.equal(model.isAssembly, true);
-});
-
-test('search patterns support plain text, whole words and regular expressions', () => {
-  const plain = buildSearchRegExp('state', { regex: false, caseSensitive: false, wholeWord: false });
-  assert.ok(plain.test('g_value.state = 1;'));
-  const whole = buildSearchRegExp('state', { regex: false, caseSensitive: false, wholeWord: true });
-  assert.equal(whole.test('state_machine'), false);
-  assert.equal(whole.test('g_value.state'), true);
-  const regex = buildSearchRegExp('APP_\\w+', { regex: true, caseSensitive: true, wholeWord: false });
-  assert.ok(regex.test('void APP_Model_Init(void);'));
 });
 
 function extractName(line: string): string {

@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import {
-  buildSearchRegExp,
   classifyCUse,
   classifyVariableUse,
   findWordAtLine,
@@ -12,7 +11,6 @@ import {
   type CKind,
   type CUseRole,
   type CWord,
-  type SearchOptions,
 } from './cParser';
 import type { SourceLocation } from './protocol';
 
@@ -71,33 +69,6 @@ export interface CMemberUseEntry {
   field?: CDecl;
   sites: Array<{ location: SourceLocation; role: 'read' | 'write' }>;
 }
-
-export interface CSearchMatch {
-  uri: string;
-  fileName: string;
-  line: number;
-  character: number;
-  endCharacter: number;
-  text: string;
-}
-
-export interface CSearchResult {
-  pattern: string;
-  matches: CSearchMatch[];
-  total: number;
-  truncated: boolean;
-}
-
-export interface CSearchGroup {
-  uri: string;
-  fileName: string;
-  line: number;
-  character: number;
-  endCharacter: number;
-  text: string;
-}
-
-const MAX_SEARCH_RESULTS = 2000;
 
 export function declLocation(decl: CDecl): SourceLocation {
   return {
@@ -918,68 +889,6 @@ export class ProjectIndex implements vscode.Disposable {
       }
     }
     return [...groups.values()].sort((a, b) => a.member.localeCompare(b.member));
-  }
-
-  /* --------------------------------------------------------------- searching */
-
-  async search(pattern: string, options: SearchOptions): Promise<CSearchResult> {
-    await this.ensureIndexed();
-    const regex = buildSearchRegExp(pattern, options);
-    const matches: CSearchMatch[] = [];
-    let total = 0;
-    let truncated = false;
-    const collect = (uri: string, path: string, lines: string[]): void => {
-      const fileName = path.split(/[\\/]/).pop() ?? path;
-      for (let line = 0; line < lines.length; line += 1) {
-        const text = lines[line];
-        regex.lastIndex = 0;
-        let match: RegExpExecArray | null;
-        while ((match = regex.exec(text)) !== null) {
-          total += 1;
-          if (matches.length < MAX_SEARCH_RESULTS) {
-            matches.push({
-              uri,
-              fileName,
-              line,
-              character: match.index,
-              endCharacter: match.index + Math.max(1, match[0].length),
-              text: text.trim(),
-            });
-          } else {
-            truncated = true;
-          }
-          if (match[0].length === 0) {
-            regex.lastIndex += 1;
-          }
-        }
-      }
-    };
-    const config = vscode.workspace.getConfiguration('sourceInsight');
-    if (config.get<boolean>('enableProjectIndex') === false) {
-      // Index disabled: search the workspace files directly instead of the
-      // (mostly empty) in-memory symbol database.
-      const files = await vscode.workspace.findFiles(
-        '**/*.{c,h,s,S,asm,inc}',
-        '{**/node_modules/**,**/build/**,**/out/**,**/dist/**,**/.git/**,**/Debug/**,**/Release/**}',
-        40000,
-      );
-      for (const uri of files) {
-        try {
-          const bytes = await vscode.workspace.fs.readFile(uri);
-          const text = new TextDecoder('utf-8').decode(bytes);
-          collect(uri.toString(), uri.fsPath, text.split(/\r?\n/));
-        } catch {
-          // Ignore unreadable files.
-        }
-      }
-      return { pattern, matches, total, truncated };
-    }
-    const models = [...this.models.values()].map((entry) => entry.model)
-      .sort((a, b) => a.path.localeCompare(b.path));
-    for (const model of models) {
-      collect(model.uri, model.path, model.lines);
-    }
-    return { pattern, matches, total, truncated };
   }
 
   /* ---------------------------------------------------------------- helpers */

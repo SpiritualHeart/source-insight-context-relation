@@ -42,14 +42,6 @@ export function getWebviewHtml(
       <div class="topbar-right">
         <span class="tracking-state" id="tracking-state" title="自动符号跟踪"></span>
         <div class="provider-state" id="provider-state" title="当前符号"></div>
-        <button class="tool-button" id="search-button" type="button" title="工程搜索（支持正则表达式）">
-          <span class="tool-icon" aria-hidden="true">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2">
-              <circle cx="7" cy="7" r="4.2"/><path d="m10.2 10.2 3.2 3.2"/>
-            </svg>
-          </span>
-          <span>搜索</span>
-        </button>
         <button class="tool-button" id="follow-button" type="button" title="跟随编辑器光标" aria-pressed="true">
           <span class="tool-icon" aria-hidden="true">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2">

@@ -29,45 +29,49 @@ interface BuildState {
 export function availableModesFor(symbol: HostSymbol): RelationModeOption[] {
   if (symbol.isLabel) {
     return [
-      { value: 'callers', label: '调用者', hint: '哪些汇编标签跳转到此标签' },
-      { value: 'callees', label: '被调用', hint: '当前标签调用了哪些标签' },
-      { value: 'references', label: '引用', hint: '所有引用位置' },
+      { value: 'references', label: '引用（所有使用）', hint: '所有引用位置' },
+      { value: 'callers', label: '调用者（仅跳转）', hint: '哪些汇编标签跳转到此标签' },
+      { value: 'callees', label: '被调用（仅跳转）', hint: '当前标签跳转到哪些标签' },
       { value: 'declarations', label: '声明', hint: '标签定义与 .global 声明' },
     ];
   }
   if (symbol.isFunction) {
     return [
-      { value: 'callers', label: '调用者', hint: '谁调用了当前函数' },
-      { value: 'callees', label: '被调用', hint: '当前函数调用了谁（含函数式宏）' },
+      {
+        value: 'references',
+        label: '引用（所有使用）',
+        hint: '调用、函数指针赋值/中断向量注册、取址等所有位置',
+      },
+      { value: 'callers', label: '调用者（仅直接调用）', hint: '只统计 函数名(...) 直接调用' },
+      { value: 'callees', label: '被调用（仅直接调用）', hint: '当前函数直接调用的函数/宏' },
       { value: 'both', label: '双向', hint: '同时显示调用者与被调用者' },
-      { value: 'references', label: '引用', hint: '所有引用位置（调用/读/写/取址）' },
-      { value: 'declarations', label: '声明', hint: '函数原型与定义位置' },
+      { value: 'declarations', label: '声明/定义', hint: '函数原型与定义位置' },
     ];
   }
   if (symbol.isMacro) {
     return [
-      { value: 'references', label: '引用', hint: '宏被使用的位置（不含 #define 本身）' },
+      { value: 'references', label: '引用（所有使用）', hint: '宏被使用的位置（不含 #define 本身）' },
       { value: 'declarations', label: '定义', hint: '#define 定义位置' },
     ];
   }
   if (symbol.isEnum && !symbol.isContainer) {
     return [
-      { value: 'references', label: '引用', hint: '枚举常量的使用位置' },
+      { value: 'references', label: '引用（所有使用）', hint: '枚举常量的使用位置' },
       { value: 'declarations', label: '声明', hint: '枚举常量在枚举中的位置' },
     ];
   }
   if (symbol.isContainer) {
     if (symbol.isEnum) {
       return [
-        { value: 'contains', label: '枚举成员', hint: '枚举常量列表' },
-        { value: 'references', label: '引用', hint: '类型与成员的使用位置' },
+        { value: 'contains', label: '成员（Contents）', hint: '枚举常量列表' },
+        { value: 'references', label: '引用（所有使用）', hint: '类型与成员的使用位置' },
         { value: 'declarations', label: '声明', hint: '前置声明与定义位置' },
       ];
     }
     return [
-      { value: 'contains', label: '成员', hint: '结构体/联合体字段列表' },
+      { value: 'contains', label: '成员（Contents）', hint: '结构体/联合体字段列表' },
+      { value: 'references', label: '引用（所有使用）', hint: '类型的使用位置' },
       { value: 'instances', label: '变量实例', hint: '按值实例与指针实例' },
-      { value: 'references', label: '引用', hint: '类型的使用位置' },
       { value: 'derived', label: '类型别名', hint: '指向此类型的 typedef' },
       { value: 'declarations', label: '声明', hint: '前置声明与定义位置' },
     ];
@@ -75,14 +79,14 @@ export function availableModesFor(symbol: HostSymbol): RelationModeOption[] {
   if (symbol.isTypedef) {
     return [
       { value: 'type', label: '目标类型', hint: 'typedef 指向的结构体/基础类型' },
-      { value: 'contains', label: '成员', hint: '目标结构体的成员' },
+      { value: 'references', label: '引用（所有使用）', hint: '类型别名的使用位置' },
+      { value: 'contains', label: '成员（Contents）', hint: '目标结构体的成员' },
       { value: 'instances', label: '变量实例', hint: '使用此别名声明的变量' },
-      { value: 'references', label: '引用', hint: '类型别名的使用位置' },
     ];
   }
   if (symbol.isVariable) {
     const modes: RelationModeOption[] = [
-      { value: 'references', label: '引用', hint: '读取、写入、取址和成员访问位置' },
+      { value: 'references', label: '引用（所有使用）', hint: '读取、写入、取址和成员访问位置' },
       { value: 'type', label: '类型', hint: '变量的结构体/typedef 类型' },
     ];
     if (symbol.cKind !== 'field') {
@@ -97,13 +101,12 @@ export function availableModesFor(symbol: HostSymbol): RelationModeOption[] {
   return [{ value: 'references', label: '引用', hint: '所有引用位置' }];
 }
 
+/**
+ * Source Insight "View Relationship" defaults:
+ *   For Types: Contents, For Functions: References,
+ *   For Variables/Constants: References, For Files: None.
+ */
 export function defaultModeFor(symbol: HostSymbol): RelationMode {
-  if (symbol.isFunction || symbol.isLabel) {
-    return 'callers';
-  }
-  if (symbol.isMacro) {
-    return 'references';
-  }
   if (symbol.isContainer) {
     return 'contains';
   }
@@ -438,9 +441,11 @@ export class RelationBuilder {
         ?? group.references[0].location;
       const node = this.createNode(
         id,
-        caller ? (group.calls > 0 && symbol.isFunction ? 'caller' : 'reference') : 'global',
-        caller?.name ?? '全局',
-        caller?.kindLabel ?? '作用域',
+        caller
+          ? (mode === 'callers' && group.calls > 0 ? 'caller' : 'reference')
+          : 'global',
+        caller?.name ?? (group.fileLabel || '文件作用域'),
+        caller?.kindLabel ?? '文件作用域',
         caller,
         openLocation,
         parent,
@@ -869,6 +874,8 @@ export class RelationBuilder {
 
 interface ReferenceGroup {
   caller?: HostSymbol;
+  /** Used when the reference has no recognized enclosing symbol. */
+  fileLabel?: string;
   references: HostReference[];
   sites: HostNodeSite[];
   calls: number;
@@ -879,22 +886,22 @@ interface ReferenceGroup {
 function groupReferences(references: HostReference[]): ReferenceGroup[] {
   const groups = new Map<string, ReferenceGroup>();
   for (const reference of references) {
-    // A reference with no enclosing function/variable has no real Source
-    // Insight relation owner. Do not invent a synthetic "global" node.
-    if (!reference.caller) {
-      continue;
-    }
-    // Do not merge same-named functions/variables from different files. Header
-    // and source records for the same file still stay together.
-    const key = [
-      normalizeUriForComparison(reference.caller.definition.uri),
-      reference.caller.isFunction ? 'function' : 'symbol',
-      reference.caller.name,
-    ].join('|');
+    // Source Insight shows every reference. If the enclosing function could
+    // not be recognized (ISR macros, file-scope vector tables, ...), keep the
+    // use sites instead of dropping them.
+    const caller = reference.caller;
+    const key = caller
+      ? [
+          normalizeUriForComparison(caller.definition.uri),
+          caller.isFunction ? 'function' : 'symbol',
+          caller.name,
+        ].join('|')
+      : `file-scope|${normalizeUriForComparison(reference.location.uri)}`;
     let group = groups.get(key);
     if (!group) {
       group = {
-        caller: reference.caller,
+        caller,
+        fileLabel: caller ? undefined : fileNameFromUri(reference.location.uri),
         references: [],
         sites: [],
         calls: 0,
@@ -930,14 +937,14 @@ function groupReferences(references: HostReference[]): ReferenceGroup[] {
     });
   }
   return [...groups.values()].sort((a, b) => {
-    const nameA = a.caller?.name ?? '';
-    const nameB = b.caller?.name ?? '';
+    const nameA = a.caller?.name ?? a.fileLabel ?? '';
+    const nameB = b.caller?.name ?? b.fileLabel ?? '';
     const byName = nameA.localeCompare(nameB);
     if (byName !== 0) {
       return byName;
     }
-    return normalizeUriForComparison(a.caller?.definition.uri ?? '')
-      .localeCompare(normalizeUriForComparison(b.caller?.definition.uri ?? ''));
+    return normalizeUriForComparison(a.caller?.definition.uri ?? a.references[0]?.location.uri ?? '')
+      .localeCompare(normalizeUriForComparison(b.caller?.definition.uri ?? b.references[0]?.location.uri ?? ''));
   });
 }
 

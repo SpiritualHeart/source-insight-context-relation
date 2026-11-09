@@ -1,6 +1,6 @@
 # Source Insight Context & Relation
 
-> 把 Source Insight 4 的 **Context Window**、**Relation Window** 和 **工程符号搜索** 搬到 VS Code 底部面板，并为 C 语言内置了独立的符号数据库（宏、typedef、结构体成员、函数声明/定义、变量、汇编标签），不再只是简单的文本/语言服务搜索。
+> 把 Source Insight 4 的 **Context Window** 和 **Relation Window** 搬到 VS Code 底部面板，并为 C 语言内置了独立的符号数据库（宏、typedef、结构体成员、函数声明/定义、变量、汇编标签）。
 
 ![Source Insight Context & Relation](https://raw.githubusercontent.com/SpiritualHeart/source-insight-context-relation/main/media/preview.png)
 
@@ -14,7 +14,7 @@
   - 识别对象宏 / 函数式宏、typedef（含指针/函数指针别名）、struct/union/enum 及其成员、函数原型与定义、全局变量、数组、指针、汇编标签。
   - 索引失败或文件未收录时自动回退到 VS Code 语言服务，不影响原有 C/C++ 工程。
 - **按符号类型区分的关系逻辑**
-  - 函数：调用者 / 被调用 / 双向 / 引用（调用、读、写、取址）/ 声明与定义。
+  - 函数：默认 **References（引用，所有使用）**，可选调用者 / 被调用 / 双向 / 声明与定义。
   - 宏：宏引用（不含 `#define` 本身）、宏定义；函数式宏的调用点标记为“调用”。
   - 结构体 / 联合体：成员、变量实例（自动区分 **值实例** 与 **指针实例**）、类型别名、引用、声明/定义。
   - 枚举：枚举成员、引用、声明/定义。
@@ -31,11 +31,9 @@
   - 成员访问节点显示 `值访问 · 字段` / `指针访问 · 字段`，并列出每个读写位置。
   - 单击节点在 Context 中预览，双击跳转，右键打开关系菜单（含新增“变量实例 / 成员访问 / 声明与定义”）。
   - 多个 Relation 标签页、横向/纵向/轮廓布局、折线/曲线/直线、箭头、间距和阴影。
-- **工程搜索（正则表达式）**
-  - 顶部搜索按钮或命令 **Source Insight: 工程搜索**。
-  - 支持普通文本、整词匹配、JavaScript 正则表达式、区分大小写的正则。
-  - 结果以「文件 → 行」树形显示在 Relation 窗口，双击直接跳转到源码行。
-- **状态栏**：显示当前 Context 符号、关系数量或搜索结果数量；点击可聚焦对应窗口。
+- **状态栏**：显示当前 Context 符号和关系数量；点击可聚焦对应窗口。
+
+> 默认关系按 Source Insight **Relation Window Options**：Types → Contents，Functions → References，Variables / Constants → References。
 
 ## 安装
 
@@ -47,8 +45,7 @@ code --install-extension source-insight-context-relation-2.1.0.vsix
 
 1. 打开 C 工程，等待后台符号索引完成（可在状态栏/输出面板 `Source Insight` 查看）；
 2. 按 `Ctrl+Alt+I` 打开底部面板；
-3. 把光标放到函数、宏、变量、结构体成员或 `p->field` 上，面板自动分析；
-4. 需要全工程搜索时点击面板右上角「搜索」。
+3. 把光标放到函数、宏、变量、结构体成员或 `p->field` 上，面板自动分析。
 
 ## 快捷键
 
@@ -57,7 +54,6 @@ code --install-extension source-insight-context-relation-2.1.0.vsix
 | 打开 / 聚焦 Context / Relation 面板 | `Ctrl+Alt+I` |
 | 切换光标跟随 | `Ctrl+Alt+F` |
 | 重新分析当前符号 | 面板刷新按钮 |
-| 工程搜索（正则） | 面板搜索按钮 / 命令面板 |
 | 重建 C 符号索引 | 命令面板 |
 
 ## 关系示例
@@ -111,7 +107,6 @@ code --install-extension source-insight-context-relation-2.1.0.vsix
 | --- | --- |
 | `Source Insight: 打开上下文 / 关系窗口` | 打开面板并分析当前符号 |
 | `Source Insight: 刷新当前符号` | 清除缓存并重新分析 |
-| `Source Insight: 工程搜索（支持正则表达式）` | 全工程文本 / 正则搜索 |
 | `Source Insight: 重建 C 符号索引` | 重建工程符号数据库 |
 | `Source Insight: Relation 显示变量实例（值/指针）` | 结构体 / typedef 实例 |
 | `Source Insight: Relation 显示成员访问（. / ->）` | 变量实际访问的字段 |

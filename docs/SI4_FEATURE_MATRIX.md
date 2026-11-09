@@ -37,7 +37,7 @@
 | 结构体值实例 / 指针实例 | 已实现 | `instances` 关系，节点标记值实例/指针实例 |
 | 成员访问 `.` / `->` | 已实现 | `memberAccess` 关系，字段节点区分值访问/指针访问 |
 | 声明与定义分离 | 已实现 | 原型 / extern / 前置声明与定义分别成节点 |
-| 按符号类型选择默认关系 | 已实现 | 函数/汇编标签 Callers、宏 References、变量 References、结构/枚举 Contains、typedef 目标类型 |
+| 按符号类型选择默认关系 | 已实现 | 按 Relation Window Options：Types → Contents，Functions → References，Variables/Constants → References，typedef → 目标类型 |
 | 自动展开 Levels 1–6 | 已实现 | 工具栏 `− / +`、`sourceInsight.defaultDepth` |
 | 防止循环展开 | 已实现 | 祖先链检测，节点标“循环” |
 | 重复分支展开/折叠 | 已实现 | `sourceInsight.expandDuplicateBranches` |
@@ -71,20 +71,10 @@
 | Print Relation Window | 不适用 | 使用 VS Code/系统打印；未单独实现 |
 | Touch All Files in Relation | 不适用 | VS Code 无 Source Insight 式工程文件时间戳管理 |
 
-## 工程搜索
-
-| Source Insight 4 功能 | 本插件状态 | 说明 |
-| --- | --- | --- |
-| Search Project（普通文本） | 已实现 | 顶部搜索按钮 / 命令 |
-| 正则表达式搜索 | 已实现 | JavaScript RegExp；支持区分大小写 |
-| 整词匹配 | 已实现 | 普通文本 + `\b` |
-| 搜索结果文件/行树 | 已实现 | 结果显示在 Relation 窗口，双击跳转 |
-| 搜索结果替换 | 暂未实现 | 可在 VS Code 全局替换中完成 |
-
 ## 与 Source Insight 的显示差异
 
 Source Insight 的 Relation 列表可以显示文件、行号、代码片段和多种列。本插件按当前需求默认只显示**函数/变量/成员名称**，以保持图形树干净；需要文件位置时可在设置中打开 `sourceInsight.showLocations`。Context 顶部同样只显示符号名和类型，不显示文件路径。
 
 ## 依赖
 
-C / 头文件 / 汇编文件的全局符号、宏、typedef、结构体成员、声明/定义、成员访问和工程搜索由插件自带索引解析，不要求安装语言服务。语言服务（`ms-vscode.cpptools` / clangd）用于补足函数内局部变量、C++ 模板/类继承等索引未覆盖的场景。
+C / 头文件 / 汇编文件的全局符号、宏、typedef、结构体成员、声明/定义和成员访问由插件自带索引解析，不要求安装语言服务。语言服务（`ms-vscode.cpptools` / clangd）用于补足函数内局部变量、C++ 模板/类继承等索引未覆盖的场景。

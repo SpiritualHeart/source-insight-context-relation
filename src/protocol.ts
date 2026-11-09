@@ -294,10 +294,6 @@ export interface RefreshMessage {
   type: 'refresh';
 }
 
-export interface SearchProjectMessage {
-  type: 'searchProject';
-}
-
 export interface RebuildIndexMessage {
   type: 'rebuildIndex';
 }
@@ -342,7 +338,6 @@ export type WebviewMessage =
   | CloseRelationTabMessage
   | SelectRelationTabMessage
   | RefreshMessage
-  | SearchProjectMessage
   | RebuildIndexMessage
   | OpenSettingsMessage
   | ToggleFollowMessage

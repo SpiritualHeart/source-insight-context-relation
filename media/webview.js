@@ -11,7 +11,6 @@
     providerState: $('provider-state'),
     trackingState: $('tracking-state'),
     followButton: $('follow-button'),
-    searchButton: $('search-button'),
     indexButton: $('index-button'),
     settingsButton: $('settings-button'),
     refreshButton: $('refresh-button'),
@@ -648,7 +647,7 @@
       : '';
     return (
       `<div class="root-card" data-node-id="${escapeAttr(root.id)}" tabindex="0" role="button" title="${escapeAttr(root.name)}">` +
-        `<div class="root-eyebrow"><span class="root-role">${root.kindLabel === '搜索结果' ? '搜索' : '定义'}</span></div>` +
+        '<div class="root-eyebrow"><span class="root-role">定义</span></div>' +
         `<div class="root-name">${nodeGlyph(root)}<span>${escapeHtml(root.name)}</span></div>` +
         `<div class="root-kind">${escapeHtml(root.kindLabel)}${tags ? `<span class="root-tags">${tags}</span>` : ''}</div>` +
       '</div>'
@@ -1306,7 +1305,6 @@
   /* ------------------------------------------------------------- events */
 
   els.refreshButton.addEventListener('click', () => post({ type: 'refresh' }));
-  els.searchButton.addEventListener('click', () => post({ type: 'searchProject' }));
   els.indexButton.addEventListener('click', () => post({ type: 'rebuildIndex' }));
   els.settingsButton.addEventListener('click', () => post({ type: 'openSettings' }));
   els.relationRefreshButton.addEventListener('click', () => post({ type: 'refresh' }));

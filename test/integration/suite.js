@@ -273,7 +273,7 @@ async function run() {
     assert.equal(payload.debug.definition.uri, sourceUri.toString(), 'Definition should be the .c body');
     assert.equal(payload.debug.declaration.uri, headerUri.toString(), 'Declaration should be the .h prototype');
     assert.ok(state.relation, 'Relation should be present');
-    assert.equal(state.relation.mode, 'callers', 'Functions should default to callers');
+    assert.equal(state.relation.mode, 'references', 'Functions should default to References like Source Insight');
     assert.ok(state.relation.declaration, 'Function relation must include a declaration node');
     assert.equal(state.relation.declaration.role, 'declaration');
     assert.ok(
@@ -282,7 +282,7 @@ async function run() {
     );
     assert.equal(state.relation.root.role, 'definition');
     assert.equal(state.relation.isFunction, true);
-    assert.ok(state.relation.counts.callers >= 2, 'Callers should be classified');
+    assert.ok(state.relation.counts.references >= 2, 'References should be classified');
     assert.equal(state.context.targetStartLine, 4);
     assert.ok(state.context.lines.length >= 5, 'Context should include the function body');
     assert.equal(state.context.lines[0].line, 0, 'Context should expose the whole file for free scrolling');

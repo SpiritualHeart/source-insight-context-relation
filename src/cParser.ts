@@ -17,6 +17,8 @@
  * parsing, but the supported subset covers normal embedded C code.
  */
 
+import { looksLikeFunctionDeclaration } from './core';
+
 export type CKind =
   | 'function'
   | 'prototype'
@@ -31,7 +33,7 @@ export type CKind =
   | 'macro'
   | 'label';
 
-export type CUseRole = 'call' | 'read' | 'write' | 'address' | 'reference';
+export type CUseRole = 'call' | 'read' | 'write' | 'address' | 'reference' | 'declaration';
 
 export interface CParam {
   name: string;
@@ -65,6 +67,8 @@ export interface CDecl {
   /** For a typedef: the aliased type name. For a variable: the base type name. */
   baseType?: string;
   params?: CParam[];
+  /** Display name when the source uses a macro wrapper (`IRQ_HANDLER(NAME)`). */
+  displayName?: string;
   /** Members for struct / union / enum. */
   members?: CDecl[];
   parentName?: string;
@@ -135,12 +139,6 @@ export interface CFileModel {
   owners: COwnerRange[];
   /** Physical lines that belong to preprocessor directives. */
   directiveLines: number[];
-}
-
-export interface SearchOptions {
-  regex: boolean;
-  caseSensitive: boolean;
-  wholeWord: boolean;
 }
 
 const C_KEYWORDS = new Set([
@@ -286,16 +284,6 @@ export function collapseText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-export function buildSearchRegExp(pattern: string, options: SearchOptions): RegExp {
-  const source = options.regex ? pattern : escapeRegExp(pattern);
-  const wrapped = options.wholeWord ? `\\b(?:${source})\\b` : source;
-  return new RegExp(wrapped, options.caseSensitive ? 'g' : 'gi');
-}
-
 export function findWordAtLine(
   lineText: string,
   character: number,
@@ -352,7 +340,13 @@ export function classifyCUse(
 ): CUseRole {
   const before = lineText.slice(0, start);
   const after = lineText.slice(end);
+  const name = lineText.slice(start, end);
   if (kind === 'function' || kind === 'prototype' || kind === 'label') {
+    // A local prototype inside a function body (`extern void f(void);`) is a
+    // declaration, not a call site.
+    if (looksLikeFunctionDeclaration(lineText, name)) {
+      return 'declaration';
+    }
     if (/^\s*\(/.test(after)) {
       return 'call';
     }
@@ -1039,13 +1033,17 @@ class CFileParser {
     }
     if (terminator.kind === 'brace') {
       const braceIndex = terminator.index;
+      const close = this.findMatching(tokens, braceIndex);
+      const macroFunction = this.parseMacroFunctionDefinition(tokens, start, braceIndex, close);
+      if (macroFunction) {
+        this.decls.push(macroFunction);
+        return close < 0 ? tokens.length : close + 1;
+      }
       const fn = this.findFunctionCandidate(tokens, start, braceIndex);
       if (fn) {
-        const close = this.findMatching(tokens, braceIndex);
         this.addFunction(fn, tokens, start, braceIndex, true, close);
         return close < 0 ? tokens.length : close + 1;
       }
-      const close = this.findMatching(tokens, braceIndex);
       return close < 0 ? tokens.length : close + 1;
     }
     return terminator.index + 1;
@@ -1139,6 +1137,68 @@ class CFileParser {
       isDefinition: kind === 'field',
       baseType: baseTypeName(typeText),
       initText: declarator.initText,
+    };
+  }
+
+  /**
+   * Interrupt/compiler wrappers often define functions as macro invocations:
+   *   IRQ_HANDLER(SPC5_PIT0_HANDLER) { ... TimerHandler(); }
+   * The normal C declaration parser does not see a return type here, so treat
+   * the last identifier inside the macro argument list as the function body
+   * owner. The macro name is used as the display name, matching Source Insight.
+   */
+  private parseMacroFunctionDefinition(
+    tokens: Tok[],
+    start: number,
+    braceIndex: number,
+    closeBrace: number,
+  ): CDecl | undefined {
+    if (closeBrace < 0) {
+      return undefined;
+    }
+    const macro = tokens[start];
+    if (!macro || !isIdentifier(macro.text) || isKeyword(macro.text)) {
+      return undefined;
+    }
+    if (tokens[start + 1]?.text !== '(') {
+      return undefined;
+    }
+    const parenClose = this.findMatching(tokens, start + 1);
+    if (parenClose < 0 || parenClose >= braceIndex) {
+      return undefined;
+    }
+    if (!this.validAfterSignature(tokens, parenClose, braceIndex)) {
+      return undefined;
+    }
+    let nameTok: Tok | undefined;
+    for (let i = start + 2; i < parenClose; i += 1) {
+      if (isIdentifier(tokens[i].text) && !isKeyword(tokens[i].text)) {
+        nameTok = tokens[i];
+      }
+    }
+    if (!nameTok) {
+      return undefined;
+    }
+    return {
+      name: nameTok.text,
+      displayName: macro.text,
+      kind: 'function',
+      fileUri: this.uri,
+      line: nameTok.line,
+      nameStart: nameTok.char,
+      nameEnd: nameTok.endChar,
+      endLine: tokens[closeBrace].line,
+      endCharacter: tokens[closeBrace].endChar,
+      typeText: macro.text,
+      signature: collapseText(this.sliceTokens(tokens, start, parenClose + 1)),
+      storage: '',
+      isPointer: false,
+      pointerLevel: 0,
+      isArray: false,
+      isConst: false,
+      isDefinition: true,
+      bodyStartLine: tokens[braceIndex].line,
+      bodyEndLine: tokens[closeBrace].line,
     };
   }
 
@@ -1630,7 +1690,8 @@ class CFileParser {
         endCharacter,
       });
       const after = this.masked.slice(offset + name.length, offset + name.length + 4);
-      if (/^\s*\(/.test(after)) {
+      const lineText = this.lines[position.line] ?? '';
+      if (/^\s*\(/.test(after) && !looksLikeFunctionDeclaration(lineText, name)) {
         let back = offset - 1;
         while (back >= 0 && (this.masked[back] === ' ' || this.masked[back] === '\t')) {
           back -= 1;

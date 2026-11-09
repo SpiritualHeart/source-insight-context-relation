@@ -79,9 +79,6 @@ export function activate(context: vscode.ExtensionContext): void {
   register('sourceInsight.relationDeclarations', async () => {
     await controller.setRelationMode('declarations');
   });
-  register('sourceInsight.searchProject', async () => {
-    await controller.searchProject();
-  });
   register('sourceInsight.rebuildIndex', async () => {
     await controller.rebuildIndex();
   });

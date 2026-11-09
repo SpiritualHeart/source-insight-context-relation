@@ -163,12 +163,6 @@
         "category": "Source Insight"
       },
       {
-        "command": "sourceInsight.searchProject",
-        "title": "Source Insight: 工程搜索（支持正则表达式）",
-        "category": "Source Insight",
-        "icon": "$(search)"
-      },
-      {
         "command": "sourceInsight.rebuildIndex",
         "title": "Source Insight: 重建 C 符号索引",
         "category": "Source Insight",
@@ -254,9 +248,6 @@
         },
         {
           "command": "sourceInsight.relationDeclarations"
-        },
-        {
-          "command": "sourceInsight.searchProject"
         },
         {
           "command": "sourceInsight.rebuildIndex"

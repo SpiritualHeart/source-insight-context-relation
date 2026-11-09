@@ -428,7 +428,7 @@ export class SymbolService {
     const tags = buildCTags(primary, typeTarget, effectivePointer);
     return {
       key: `${makeSymbolKey(primary.name, location)}:${primary.kind}`,
-      name: primary.name,
+      name: primary.displayName || primary.name,
       kindId: primary.kind,
       kindLabel: descriptor.label,
       isFunction: primary.kind === 'function' || primary.kind === 'prototype',
@@ -1499,6 +1499,9 @@ function buildCTags(
   }
   if (decl.kind === 'typedef' && target.decl) {
     tags.push(`→ ${target.decl.name}`);
+  }
+  if (decl.displayName) {
+    tags.push(`${decl.displayName} 宏`);
   }
   return [...new Set(tags)];
 }

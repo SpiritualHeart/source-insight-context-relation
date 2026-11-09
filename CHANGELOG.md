@@ -10,9 +10,11 @@
   - 函数/宏/变量/类型：声明与定义分开显示；
   - 汇编标签：调用者/被调用。
 - 引用分类新增「取址」，调用点区分调用、读、写、取址。
-- 新增工程搜索（普通文本 / 整词 / 正则表达式 / 区分大小写正则），结果以文件→行树显示在 Relation 窗口。
+- 按 Source Insight **Relation Window Options** 调整默认关系：Types → Contents，Functions → References，Variables / Constants → References。
+- 引用关系不再丢弃无法识别所属函数的引用；函数指针注册、中断向量表、ISR 宏内的使用会归入“文件作用域”节点显示。
+- 移除插件内置的工程搜索功能，统一使用 VS Code 自带搜索。
 - 节点新增属性标签：指针、数组、extern、static、原型、函数式宏、`→ 类型` 等。
-- 新增命令：工程搜索、重建符号索引、变量实例、成员访问、声明/定义。
+- 新增命令：重建符号索引、变量实例、成员访问、声明/定义。
 - 新增设置：`enableProjectIndex`、`indexOnStartup`、`maxIndexFileSize`。
 - 修复 `struct Tag *p`、`struct Tag f(void)` 等复杂声明被误解析的问题。
 - 关系节点的全部 `Line` 使用点直接展开显示，不再限制高度或内部滚动。

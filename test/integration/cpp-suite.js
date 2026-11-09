@@ -262,7 +262,7 @@ async function waitForReadyState(timeoutMs) {
       payload.debug.declaration &&
       payload.debug.declaration.uri.endsWith('/APP_Model.h') &&
       state.relation &&
-      state.relation.mode === 'callers' &&
+      state.relation.mode === 'references' &&
       state.relation.declaration &&
       state.relation.right.length >= 2
     ) {
@@ -361,10 +361,10 @@ async function run() {
 
   assert.equal(state.context.symbolName, NAME);
   assert.equal(state.context.isFunction, true);
-  assert.equal(state.relation.mode, 'callers', 'Function default relation should be callers');
+  assert.equal(state.relation.mode, 'references', 'Function default relation should be References');
   assert.ok(state.relation.declaration, 'Relation must include declaration');
-  assert.ok(state.relation.right.length >= 2, 'Expected at least two caller nodes');
-  assert.ok(state.relation.counts.callers >= 2, 'Callers should be classified');
+  assert.ok(state.relation.right.length >= 2, 'Expected at least two reference-owner nodes');
+  assert.ok(state.relation.counts.references >= 2, 'References should be classified');
   assert.ok(state.context.lines.length >= 5, 'Context should include the definition body');
   assert.ok(
     state.relation.right.some((node) => node.name === 'APP_Model_SetPEPsOutputs'),
