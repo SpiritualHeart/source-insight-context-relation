@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.1
+
+- 修复 ISR 宏函数定义（如 `IRQ_HANDLER(SPC5_PIT0_HANDLER) { ... }`）被整段跳过、函数体内的调用找不到所属函数的问题。
+- 函数内局部原型（`extern void f(void);`）不再被误判为调用。
+- 按 Source Insight **Relation Window Options** 调整默认关系：Types → Contents，Functions → References，Variables / Constants → References。
+- 引用关系不再丢弃无法识别所属函数的引用；函数指针注册、中断向量表、ISR 宏内的使用会归入“文件作用域”节点显示。
+- 关系节点全部 `Line` 使用点直接展开显示，不再限制高度或内部滚动。
+- 放大节点名称、Line 使用点、文件名称、工具栏图标、下拉框和右键菜单的字体与尺寸。
+- 移除面板标题栏中重复的跟随 / 刷新 / 设置图标，统一放到面板内工具栏。
+- 移除插件内置的工程搜索，统一使用 VS Code 自带搜索。
+
 ## 2.1.0
 
 - 新增插件自带的 C/汇编工程符号索引：后台扫描 `.c/.h/.s/.asm/.inc`，不再依赖语言服务做简单文本搜索。
@@ -10,16 +21,10 @@
   - 函数/宏/变量/类型：声明与定义分开显示；
   - 汇编标签：调用者/被调用。
 - 引用分类新增「取址」，调用点区分调用、读、写、取址。
-- 按 Source Insight **Relation Window Options** 调整默认关系：Types → Contents，Functions → References，Variables / Constants → References。
-- 引用关系不再丢弃无法识别所属函数的引用；函数指针注册、中断向量表、ISR 宏内的使用会归入“文件作用域”节点显示。
-- 移除插件内置的工程搜索功能，统一使用 VS Code 自带搜索。
 - 节点新增属性标签：指针、数组、extern、static、原型、函数式宏、`→ 类型` 等。
-- 新增命令：重建符号索引、变量实例、成员访问、声明/定义。
+- 新增命令：工程搜索、重建符号索引、变量实例、成员访问、声明/定义。
 - 新增设置：`enableProjectIndex`、`indexOnStartup`、`maxIndexFileSize`。
 - 修复 `struct Tag *p`、`struct Tag f(void)` 等复杂声明被误解析的问题。
-- 关系节点的全部 `Line` 使用点直接展开显示，不再限制高度或内部滚动。
-- 放大 Context / Relation 的节点名称、Line 使用点、文件名称、工具栏图标、下拉框和右键菜单字体与尺寸。
-- 移除面板标题栏中重复的跟随 / 刷新 / 设置图标，统一放到面板内工具栏，并新增索引重建和设置按钮。
 - 原有语言服务回退路径保留：索引未覆盖的符号（如函数内局部变量）仍使用 VS Code Provider。
 
 ## 2.0.3
